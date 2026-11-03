@@ -1,1 +1,30 @@
-{"C:\\Users\\nakka\\OneDrive\\Pictures\\Saved Pictures\\Desktop\\Internships & Projects\\GeoLedger\\blockchain\\contracts\\GeoLedger.sol":{"jobHash":"solc-0_8_20-3c1e42d73b62f40ccb7b451080fc756e509c156d","isolated":false,"compilerType":"solc","artifactPaths":["C:\\Users\\nakka\\OneDrive\\Pictures\\Saved Pictures\\Desktop\\Internships & Projects\\GeoLedger\\blockchain\\artifacts\\contracts\\GeoLedger.sol\\GeoLedger.json"],"buildInfoPath":"C:\\Users\\nakka\\OneDrive\\Pictures\\Saved Pictures\\Desktop\\Internships & Projects\\GeoLedger\\blockchain\\artifacts\\build-info\\solc-0_8_20-3c1e42d73b62f40ccb7b451080fc756e509c156d.json","buildInfoOutputPath":"C:\\Users\\nakka\\OneDrive\\Pictures\\Saved Pictures\\Desktop\\Internships & Projects\\GeoLedger\\blockchain\\artifacts\\build-info\\solc-0_8_20-3c1e42d73b62f40ccb7b451080fc756e509c156d.output.json","typeFilePath":"C:\\Users\\nakka\\OneDrive\\Pictures\\Saved Pictures\\Desktop\\Internships & Projects\\GeoLedger\\blockchain\\artifacts\\contracts\\GeoLedger.sol\\artifacts.d.ts","wasm":false,"artifactsDirectory":"C:\\Users\\nakka\\OneDrive\\Pictures\\Saved Pictures\\Desktop\\Internships & Projects\\GeoLedger\\blockchain\\artifacts","emitsTypeDeclarations":true}}
+{
+  "C:\\Users\\nakka\\OneDrive\\Pictures\\Saved Pictures\\Desktop\\Internships & Projects\\GeoLedger\\blockchain\\contracts\\GeoLedger.sol": {
+    "jobHash": "solc-0_8_20-3c1e42d73b62f40ccb7b451080fc756e509c156d",
+    "isolated": false,
+    "compilerType": "solc",
+    "artifactPaths": [
+      "C:\\Users\\nakka\\OneDrive\\Pictures\\Saved Pictures\\Desktop\\Internships & Projects\\GeoLedger\\blockchain\\artifacts\\contracts\\GeoLedger.sol\\GeoLedger.json"
+    ],
+    "buildInfoPath": "C:\\Users\\nakka\\OneDrive\\Pictures\\Saved Pictures\\Desktop\\Internships & Projects\\GeoLedger\\blockchain\\artifacts\\build-info\\solc-0_8_20-3c1e42d73b62f40ccb7b451080fc756e509c156d.json",
+    "buildInfoOutputPath": "C:\\Users\\nakka\\OneDrive\\Pictures\\Saved Pictures\\Desktop\\Internships & Projects\\GeoLedger\\blockchain\\artifacts\\build-info\\solc-0_8_20-3c1e42d73b62f40ccb7b451080fc756e509c156d.output.json",
+    "typeFilePath": "C:\\Users\\nakka\\OneDrive\\Pictures\\Saved Pictures\\Desktop\\Internships & Projects\\GeoLedger\\blockchain\\artifacts\\contracts\\GeoLedger.sol\\artifacts.d.ts",
+    "wasm": false,
+    "artifactsDirectory": "C:\\Users\\nakka\\OneDrive\\Pictures\\Saved Pictures\\Desktop\\Internships & Projects\\GeoLedger\\blockchain\\artifacts",
+    "emitsTypeDeclarations": true
+  },
+  "C:\\Users\\nakka\\OneDrive\\Pictures\\Saved Pictures\\Desktop\\Internships & Projects\\GeoLedger\\GeoLedger\\blockchain\\contracts\\GeoLedger.sol": {
+    "jobHash": "solc-0_8_20-3c1e42d73b62f40ccb7b451080fc756e509c156d",
+    "isolated": false,
+    "compilerType": "solc",
+    "artifactPaths": [
+      "C:\\Users\\nakka\\OneDrive\\Pictures\\Saved Pictures\\Desktop\\Internships & Projects\\GeoLedger\\GeoLedger\\blockchain\\artifacts\\contracts\\GeoLedger.sol\\GeoLedger.json"
+    ],
+    "buildInfoPath": "C:\\Users\\nakka\\OneDrive\\Pictures\\Saved Pictures\\Desktop\\Internships & Projects\\GeoLedger\\GeoLedger\\blockchain\\artifacts\\build-info\\solc-0_8_20-3c1e42d73b62f40ccb7b451080fc756e509c156d.json",
+    "buildInfoOutputPath": "C:\\Users\\nakka\\OneDrive\\Pictures\\Saved Pictures\\Desktop\\Internships & Projects\\GeoLedger\\GeoLedger\\blockchain\\artifacts\\build-info\\solc-0_8_20-3c1e42d73b62f40ccb7b451080fc756e509c156d.output.json",
+    "typeFilePath": "C:\\Users\\nakka\\OneDrive\\Pictures\\Saved Pictures\\Desktop\\Internships & Projects\\GeoLedger\\GeoLedger\\blockchain\\artifacts\\contracts\\GeoLedger.sol\\artifacts.d.ts",
+    "wasm": false,
+    "artifactsDirectory": "C:\\Users\\nakka\\OneDrive\\Pictures\\Saved Pictures\\Desktop\\Internships & Projects\\GeoLedger\\GeoLedger\\blockchain\\artifacts",
+    "emitsTypeDeclarations": true
+  }
+}

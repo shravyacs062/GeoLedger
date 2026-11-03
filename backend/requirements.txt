@@ -1,0 +1,9 @@
+flask
+flask-cors
+python-dotenv
+pymongo
+web3
+pytest
+PyJWT
+qrcode[pil]
+Pillow

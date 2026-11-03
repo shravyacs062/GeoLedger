@@ -3,6 +3,13 @@ from datetime import datetime
 
 def seed_demo_data(db):
     try:
+        # Seed default admin/user accounts (idempotent)
+        try:
+            from services.auth_service import AuthService
+            AuthService().ensure_seed_accounts()
+        except Exception as auth_seed_err:
+            print(f"Warning: Failed to seed auth accounts: {auth_seed_err}")
+
         if db.properties.count_documents({}) == 0:
             demo_property = {
                 "property_id": "GL-PROP-001",

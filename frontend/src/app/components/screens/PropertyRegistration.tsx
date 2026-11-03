@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '../Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
@@ -8,9 +8,11 @@ import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { Upload, FileText, CheckCircle2, AlertCircle } from 'lucide-react';
 import { api } from '../../../services/api';
+import { useWallet } from '../../context/WalletContext';
 
 export function PropertyRegistration() {
   const navigate = useNavigate();
+  const { address } = useWallet();
   const [currentStep, setCurrentStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
 
@@ -26,9 +28,15 @@ export function PropertyRegistration() {
     governmentId: 'AADHAAR-8921-4821',
     contactNumber: '+91 98765 43210',
     email: 'john.doe@example.com',
-    walletAddress: '0x7a3f9b2c1d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a',
+    walletAddress: address || '',
     residentialAddress: 'House 42, 3rd Cross, Bengaluru',
   });
+
+  useEffect(() => {
+    if (address) {
+      setFormData((prev) => ({ ...prev, walletAddress: address }));
+    }
+  }, [address]);
 
   const [files, setFiles] = useState<{ [key: string]: File }>({});
 
@@ -43,12 +51,30 @@ export function PropertyRegistration() {
   const handleSubmit = async () => {
     try {
       setSubmitting(true);
+      const missing = documents.filter((d) => d.required && !files[d.name]);
+      if (missing.length) {
+        throw new Error(`Upload required documents: ${missing.map((d) => d.label).join(', ')}`);
+      }
+      if (!(address || formData.walletAddress)) {
+        throw new Error('Wallet address is required. Connect MetaMask or enter it in Owner Information.');
+      }
+
       const app = await api.applications.create({
         survey_number: formData.surveyNumber,
         application_type: 'NEW_REGISTRATION',
         applicant_name: formData.ownerName,
         applicant_id: formData.governmentId,
-        wallet_address: formData.walletAddress,
+        applicant_wallet: address || formData.walletAddress,
+        wallet_address: address || formData.walletAddress,
+        applicant_email: formData.email,
+        applicant_phone: formData.contactNumber,
+        party_details: {
+          applicant_name: formData.ownerName,
+          applicant_email: formData.email,
+          applicant_phone: formData.contactNumber,
+          government_id: formData.governmentId,
+          residential_address: formData.residentialAddress,
+        },
         property_details: {
           area: Number(formData.area) || 2500,
           location: formData.location,
@@ -60,8 +86,8 @@ export function PropertyRegistration() {
       });
 
       const appId = app._id || app.application_id || app.id;
-      for (const [docName, file] of Object.entries(files)) {
-        await api.documents.upload(appId, file, docName).catch(() => {});
+      for (const [docType, file] of Object.entries(files)) {
+        await api.documents.upload(appId, file, docType);
       }
       navigate(`/applications/${appId}`);
     } catch (err: any) {
@@ -79,12 +105,9 @@ export function PropertyRegistration() {
   ];
 
   const documents = [
-    { name: 'Registration Document', required: true },
-    { name: 'Legal Heir Certificate', required: false },
-    { name: 'Family Tree', required: false },
-    { name: 'Death Certificate', required: false },
-    { name: 'Mutation Certificate', required: true },
-    { name: 'NOC (No Objection Certificate)', required: false },
+    { name: 'SALE_DEED', label: 'Sale Deed', required: true },
+    { name: 'ID_PROOF', label: 'Owner ID Proof', required: true },
+    { name: 'MUTATION_CERTIFICATE', label: 'Mutation Certificate', required: true },
   ];
 
   return (
@@ -288,12 +311,12 @@ export function PropertyRegistration() {
                       <Label htmlFor="wallet-address">Wallet Address *</Label>
                       <Input
                         id="wallet-address"
-                        placeholder="0x..."
-                        className="mt-2 border-[#E2E8F0] font-mono text-sm"
+                        placeholder="Connect MetaMask"
+                        className="mt-2 border-[#E2E8F0] font-mono text-sm bg-[#F8FAFC]"
                         value={formData.walletAddress}
-                        onChange={(e) => updateField('walletAddress', e.target.value)}
+                        readOnly
                       />
-                      <p className="text-xs text-[#64748B] mt-2">This will be the blockchain address for property ownership</p>
+                      <p className="text-xs text-[#64748B] mt-2">Filled from your connected MetaMask account. This becomes the on-chain owner.</p>
                     </div>
 
                     <div>
@@ -319,7 +342,7 @@ export function PropertyRegistration() {
                           <div className="flex items-center gap-2">
                             <FileText className="w-5 h-5 text-[#0F766E]" />
                             <div>
-                              <p className="font-medium text-[#0F172A]">{doc.name}</p>
+                              <p className="font-medium text-[#0F172A]">{doc.label}</p>
                               {doc.required && (
                                 <span className="text-xs text-[#DC2626]">Required</span>
                               )}

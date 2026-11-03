@@ -28,6 +28,10 @@ class GISService:
                     "survey_number": survey_number,
                     "geojson": feature,
                     "status": "found",
+                    "found": True,
+                    "data_source": "demo_geojson",
+                    "is_verified_cadastral": False,
+                    "disclaimer": "Demo GeoJSON parcel — not verified government cadastral data.",
                 }
 
         # If survey is not specifically in demo set, synthesize a realistic parcel centered in Mysuru region
@@ -65,4 +69,8 @@ class GISService:
             "survey_number": survey_number,
             "geojson": synth_feature,
             "status": "generated",
+            "found": False,
+            "data_source": "synthetic",
+            "is_verified_cadastral": False,
+            "disclaimer": "Synthesized placeholder parcel — not verified government cadastral data.",
         }

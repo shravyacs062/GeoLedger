@@ -23,8 +23,11 @@ import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Input } from '../ui/input';
 import { api } from '../../../services/api';
+import { useWallet } from '../../context/WalletContext';
+import { sameAddress } from '../../../services/wallet';
 
 export function MyProperties() {
+  const { address } = useWallet();
   const [properties, setProperties] = useState<any[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
@@ -46,6 +49,7 @@ export function MyProperties() {
   }, []);
 
   const filteredProperties = properties.filter((p) => {
+    if (!sameAddress(p.owner_wallet, address)) return false;
     const q = searchQuery.toLowerCase();
     const survey = (p.survey_number || '').toLowerCase();
     const propId = (p.property_id || '').toLowerCase();
@@ -101,7 +105,9 @@ export function MyProperties() {
             <Building2 className="mx-auto h-12 w-12 text-[#94A3B8]" />
             <h3 className="mt-4 text-base font-semibold text-[#0F172A]">No properties found</h3>
             <p className="mt-1 text-sm text-[#64748B]">
-              {searchQuery ? 'Try a different search query.' : 'No land parcels registered in this system yet.'}
+              {searchQuery
+                ? 'Try a different search query.'
+                : 'No land parcels are registered to this MetaMask account yet.'}
             </p>
             <Link to="/applications/new" className="mt-4 inline-block">
               <Button className="bg-[#0F766E] hover:bg-[#115E59]">Submit Registration Application</Button>

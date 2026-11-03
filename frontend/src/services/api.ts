@@ -9,7 +9,130 @@ const client = axios.create({
   },
 });
 
+let authToken: string | null = null;
+
+export function setAuthToken(token: string | null) {
+  authToken = token;
+  if (token) {
+    client.defaults.headers.common.Authorization = `Bearer ${token}`;
+  } else {
+    delete client.defaults.headers.common.Authorization;
+  }
+}
+
+client.interceptors.request.use((config) => {
+  if (authToken) {
+    config.headers = config.headers || {};
+    config.headers.Authorization = `Bearer ${authToken}`;
+  }
+  return config;
+});
+
 export const api = {
+  auth: {
+    register: async (walletAddress: string) => {
+      try {
+        const res = await client.post('/auth/register', { wallet_address: walletAddress });
+        return res.data?.data;
+      } catch (err: unknown) {
+        const status = (err as { response?: { status?: number } })?.response?.status;
+        if (status === 409) return null;
+        console.warn('Wallet registration skipped', err);
+        return null;
+      }
+    },
+    registerAccount: async (data: {
+      email: string;
+      password: string;
+      full_name?: string;
+      phone?: string;
+      wallet_address?: string;
+    }) => {
+      const res = await client.post('/auth/register', data);
+      return res.data?.data;
+    },
+    login: async (email: string, password: string) => {
+      const res = await client.post('/auth/login', { email, password });
+      return res.data?.data;
+    },
+    adminLogin: async (email: string, password: string) => {
+      const res = await client.post('/auth/admin/login', { email, password });
+      return res.data?.data;
+    },
+    me: async () => {
+      const res = await client.get('/auth/me');
+      return res.data?.data;
+    },
+    updateProfile: async (data: Record<string, unknown>) => {
+      const res = await client.put('/auth/profile', data);
+      return res.data?.data;
+    },
+    logout: async () => {
+      const res = await client.post('/auth/logout');
+      return res.data;
+    },
+    listUsers: async () => {
+      const res = await client.get('/auth/users');
+      return res.data?.data || [];
+    },
+    setRole: async (userId: string, role: string) => {
+      const res = await client.put(`/auth/users/${userId}/role`, { role });
+      return res.data?.data;
+    },
+  },
+
+  dashboard: {
+    admin: async () => {
+      const res = await client.get('/dashboard/admin');
+      return res.data?.data;
+    },
+    user: async () => {
+      const res = await client.get('/dashboard/user');
+      return res.data?.data;
+    },
+  },
+
+  notifications: {
+    list: async () => {
+      const res = await client.get('/notifications');
+      return res.data?.data || [];
+    },
+    markRead: async (id: string) => {
+      const res = await client.post(`/notifications/${id}/read`);
+      return res.data?.data;
+    },
+    markAllRead: async () => {
+      const res = await client.post('/notifications/read-all');
+      return res.data?.data;
+    },
+  },
+
+  valuation: {
+    estimate: async (data: Record<string, unknown>) => {
+      const res = await client.post('/valuation/estimate', data);
+      return res.data?.data;
+    },
+    getParams: async () => {
+      const res = await client.get('/valuation/params');
+      return res.data?.data;
+    },
+    updateParams: async (data: Record<string, unknown>) => {
+      const res = await client.put('/valuation/params', data);
+      return res.data?.data;
+    },
+  },
+
+  qr: {
+    get: async (identifier: string) => {
+      const res = await client.get(`/qr/property/${identifier}`);
+      return res.data?.data;
+    },
+    generate: async (data: { survey_number?: string; property_id?: string }) => {
+      const res = await client.post('/qr/generate', data);
+      return res.data?.data;
+    },
+  },
+
   properties: {
     list: async () => {
       const res = await client.get('/properties');
@@ -26,10 +149,11 @@ export const api = {
   },
 
   applications: {
-    list: async (status?: string, applicantWallet?: string) => {
+    list: async (status?: string, applicantWallet?: string, applicationType?: string) => {
       const params: any = {};
       if (status) params.status = status;
       if (applicantWallet) params.applicant_wallet = applicantWallet;
+      if (applicationType) params.application_type = applicationType;
       const res = await client.get('/applications', { params });
       return res.data?.data || [];
     },
@@ -47,6 +171,17 @@ export const api = {
     },
     approve: async (id: string) => {
       const res = await client.post(`/applications/${id}/approve`);
+      return res.data?.data;
+    },
+    reject: async (id: string, rejection_reason: string) => {
+      const res = await client.post(`/applications/${id}/reject`, { rejection_reason });
+      return res.data?.data;
+    },
+    requestDocuments: async (id: string, remarks: string, required_documents?: string[]) => {
+      const res = await client.post(`/applications/${id}/request-documents`, {
+        remarks,
+        required_documents,
+      });
       return res.data?.data;
     },
   },

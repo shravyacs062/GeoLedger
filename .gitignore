@@ -9,6 +9,8 @@ build/
 # Environment variables
 .env
 *.env
+!.env.example
+!**/.env.example
 
 # Python
 venv/
@@ -25,6 +27,8 @@ geoledger.db
 # Uploads & Temporary files
 uploads/
 *.txt
+!requirements.txt
+!**/requirements.txt
 implementation_plan.md
 walkthrough.md
 

@@ -10,62 +10,77 @@ export function Dashboard() {
   const [properties, setProperties] = useState<any[]>([]);
   const [applications, setApplications] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
+  const [userStats, setUserStats] = useState<any>(null);
 
   useEffect(() => {
     Promise.all([
+      api.dashboard.user().catch(() => null),
       api.properties.list().catch(() => []),
       api.applications.list().catch(() => []),
       api.blockchain.getTransactions().catch(() => []),
-    ]).then(([props, apps, txs]) => {
-      if (props && props.length > 0) setProperties(props);
-      if (apps && apps.length > 0) setApplications(apps);
-      if (txs && txs.length > 0) setTransactions(txs);
+    ]).then(([dash, props, apps, txs]) => {
+      setUserStats(dash);
+      setProperties(props || []);
+      setApplications(apps || []);
+      setTransactions(txs || []);
     });
   }, []);
 
   const stats = [
-    { icon: Map, label: 'Total Properties', value: properties.length > 0 ? String(properties.length) : '12', color: 'bg-[#0F766E]' },
-    { icon: FileText, label: 'Pending Transfers', value: applications.length > 0 ? String(applications.filter(a => a.status !== 'COMPLETED').length) : '3', color: 'bg-[#38BDF8]' },
-    { icon: TrendingUp, label: 'Completed', value: transactions.length > 0 ? String(transactions.length) : '45', color: 'bg-[#16A34A]' },
-    { icon: Activity, label: 'Active Listings', value: properties.length > 0 ? String(properties.length) : '8', color: 'bg-[#334155]' },
+    {
+      icon: Map,
+      label: 'My Properties',
+      value: String(userStats?.registered_properties ?? properties.length),
+      color: 'bg-[#0F766E]',
+    },
+    {
+      icon: FileText,
+      label: 'Pending Applications',
+      value: String(
+        userStats?.pending_applications ??
+          applications.filter((a) => !['COMPLETED', 'REJECTED'].includes(a.status)).length
+      ),
+      color: 'bg-[#38BDF8]',
+    },
+    {
+      icon: TrendingUp,
+      label: 'Submitted Applications',
+      value: String(userStats?.submitted_applications ?? applications.length),
+      color: 'bg-[#16A34A]',
+    },
+    {
+      icon: Activity,
+      label: 'Blockchain Txns',
+      value: String(transactions.length),
+      color: 'bg-[#334155]',
+    },
   ];
 
-  const recentProperties = properties.length > 0
-    ? properties.slice(0, 3).map((p) => ({
-        id: p.survey_number || p.property_id || 'SN-2023-4521',
-        location: `${p.village || 'Block A, Survey 123'}, ${p.district || 'Mysuru'}`,
-        area: `${p.area || 2500} sq ft`,
-        status: p.status === 'REGISTERED' || !p.status ? 'Verified' : 'Pending',
-      }))
-    : [
-        { id: 'SN-2023-4521', location: 'Block A, Survey 123', area: '2,500 sq ft', status: 'Verified' },
-        { id: 'SN-2023-4522', location: 'Block B, Survey 124', area: '3,200 sq ft', status: 'Pending' },
-        { id: 'SN-2023-4523', location: 'Block C, Survey 125', area: '1,800 sq ft', status: 'Verified' },
-      ];
+  const sourceProps = userStats?.properties?.length ? userStats.properties : properties;
+  const recentProperties = sourceProps.slice(0, 3).map((p: any) => ({
+    id: p.survey_number || p.property_id || '—',
+    location: [p.village, p.district].filter(Boolean).join(', ') || 'Registered parcel',
+    area: p.area ? `${p.area} sq ft` : '—',
+    status: p.status || 'REGISTERED',
+  }));
 
-  const recentActivity = transactions.length > 0
-    ? transactions.slice(0, 4).map((t) => ({
-        action: (t.transaction_type || t.type || 'Property Registered').replace(/_/g, ' '),
-        property: t.survey_number || t.surveyNumber || t.property_id || 'SN-2023-4521',
-        time: t.timestamp ? new Date(t.timestamp).toLocaleDateString() : 'Recent',
-      }))
-    : [
-        { action: 'Property Registered', property: 'SN-2023-4521', time: '2 hours ago' },
-        { action: 'Ownership Transfer', property: 'SN-2023-4520', time: '5 hours ago' },
-        { action: 'Document Verified', property: 'SN-2023-4519', time: '1 day ago' },
-        { action: 'Property Updated', property: 'SN-2023-4518', time: '2 days ago' },
-      ];
+  const sourceApps = userStats?.recent_applications?.length
+    ? userStats.recent_applications
+    : applications;
+  const recentActivity = sourceApps.slice(0, 4).map((t: any) => ({
+    action: (t.application_type || t.transaction_type || 'Application').replace(/_/g, ' '),
+    property: t.survey_number || t.property_id || '—',
+    time: t.updated_at || t.created_at || t.timestamp || 'Recent',
+  }));
 
   return (
     <Layout>
       <div className="p-4 lg:p-8">
-        {/* Header */}
         <div className="mb-8">
           <h1 className="text-3xl font-semibold text-[#0F172A] mb-2">Dashboard</h1>
-          <p className="text-[#64748B]">Welcome back! Here's an overview of your land registry activities.</p>
+          <p className="text-[#64748B]">Overview of your properties, applications, and transfers.</p>
         </div>
 
-        {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {stats.map((stat, index) => {
             const Icon = stat.icon;
@@ -86,13 +101,12 @@ export function Dashboard() {
         </div>
 
         <div className="grid lg:grid-cols-3 gap-8">
-          {/* Map View */}
           <div className="lg:col-span-2">
             <Card className="border-[#E2E8F0]">
               <CardHeader>
                 <CardTitle className="text-[#0F172A]">GIS Map Overview</CardTitle>
                 <CardDescription className="text-[#64748B]">
-                  Interactive view of your registered properties
+                  Open the interactive map to inspect parcels
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -100,10 +114,10 @@ export function Dashboard() {
                   <Map className="w-32 h-32 text-[#0F766E]/30" />
                   <div className="absolute top-4 left-4 bg-white rounded-lg shadow-md p-3 flex items-center gap-2">
                     <MapPin className="w-4 h-4 text-[#0F766E]" />
-                    <span className="text-sm text-[#0F172A]">12 Properties</span>
+                    <span className="text-sm text-[#0F172A]">{properties.length} Properties</span>
                   </div>
                   <div className="absolute bottom-4 right-4">
-                    <Link to="/search">
+                    <Link to="/map">
                       <Button size="sm" className="bg-[#0F766E] hover:bg-[#0F766E]/90">
                         View Full Map
                       </Button>
@@ -113,54 +127,58 @@ export function Dashboard() {
               </CardContent>
             </Card>
 
-            {/* Recent Properties */}
             <Card className="border-[#E2E8F0] mt-6">
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle className="text-[#0F172A]">Your Properties</CardTitle>
-                    <CardDescription className="text-[#64748B]">Recently registered land parcels</CardDescription>
+                    <CardDescription className="text-[#64748B]">Registered land parcels</CardDescription>
                   </div>
-                  <Link to="/search">
+                  <Link to="/properties">
                     <Button variant="outline" size="sm" className="border-[#E2E8F0]">View All</Button>
                   </Link>
                 </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {recentProperties.map((property, index) => (
-                    <div key={index} className="flex items-center justify-between p-4 bg-[#F8FAFC] rounded-lg">
+                  {recentProperties.length === 0 && (
+                    <p className="text-sm text-[#64748B]">No registered properties yet.</p>
+                  )}
+                  {recentProperties.map((property: any, index: number) => (
+                    <Link
+                      key={index}
+                      to={`/properties/${property.id}`}
+                      className="flex items-center justify-between p-4 bg-[#F8FAFC] rounded-lg hover:bg-[#F1F5F9]"
+                    >
                       <div className="flex-1">
                         <p className="font-medium text-[#0F172A]">{property.id}</p>
                         <p className="text-sm text-[#64748B]">{property.location}</p>
                       </div>
                       <div className="text-right">
                         <p className="text-sm text-[#0F172A]">{property.area}</p>
-                        <span className={`inline-block px-2 py-1 rounded text-xs mt-1 ${
-                          property.status === 'Verified'
-                            ? 'bg-[#16A34A]/10 text-[#16A34A]'
-                            : 'bg-[#38BDF8]/10 text-[#38BDF8]'
-                        }`}>
+                        <span className="inline-block px-2 py-1 rounded text-xs mt-1 bg-[#16A34A]/10 text-[#16A34A]">
                           {property.status}
                         </span>
                       </div>
-                    </div>
+                    </Link>
                   ))}
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Activity Feed */}
           <div>
             <Card className="border-[#E2E8F0]">
               <CardHeader>
                 <CardTitle className="text-[#0F172A]">Recent Activity</CardTitle>
-                <CardDescription className="text-[#64748B]">Latest transactions and updates</CardDescription>
+                <CardDescription className="text-[#64748B]">Latest applications</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {recentActivity.map((activity, index) => (
+                  {recentActivity.length === 0 && (
+                    <p className="text-sm text-[#64748B]">No activity yet.</p>
+                  )}
+                  {recentActivity.map((activity: any, index: number) => (
                     <div key={index} className="flex gap-4">
                       <div className="w-2 h-2 bg-[#0F766E] rounded-full mt-2 flex-shrink-0"></div>
                       <div className="flex-1">
@@ -177,7 +195,6 @@ export function Dashboard() {
               </CardContent>
             </Card>
 
-            {/* Quick Actions */}
             <Card className="border-[#E2E8F0] mt-6">
               <CardHeader>
                 <CardTitle className="text-[#0F172A]">Quick Actions</CardTitle>
@@ -189,16 +206,19 @@ export function Dashboard() {
                     Register New Property
                   </Button>
                 </Link>
-                <Link to="/search">
+                <Link to="/transfer">
                   <Button variant="outline" className="w-full border-[#E2E8F0]" size="lg">
-                    <Map className="w-4 h-4 mr-2" />
-                    Search Properties
+                    Ownership Transfer
                   </Button>
                 </Link>
-                <Link to="/verify">
+                <Link to="/inheritance">
                   <Button variant="outline" className="w-full border-[#E2E8F0]" size="lg">
-                    <Activity className="w-4 h-4 mr-2" />
-                    Verify Document
+                    Inheritance Transfer
+                  </Button>
+                </Link>
+                <Link to="/valuation">
+                  <Button variant="outline" className="w-full border-[#E2E8F0]" size="lg">
+                    Land Valuation
                   </Button>
                 </Link>
               </CardContent>

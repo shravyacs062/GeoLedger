@@ -15,8 +15,23 @@ class VerificationService:
 
     def review_document(self, document_id: str, status: str, remarks: str = None) -> dict:
         status = (status or "").upper()
-        if status not in ("VERIFIED", "REJECTED"):
-            raise APIError("Status must be VERIFIED or REJECTED", status_code=400)
+        # Normalize display aliases from complete.md
+        aliases = {
+            "VERIFICATION_FAILED": "REJECTED",
+            "FAILED": "REJECTED",
+            "REQUIRES_MANUAL_REVIEW": "REQUIRES_MANUAL_REVIEW",
+            "MANUAL_REVIEW": "REQUIRES_MANUAL_REVIEW",
+            "PENDING_VERIFICATION": "PENDING",
+            "PENDING": "PENDING",
+            "VERIFIED": "VERIFIED",
+            "REJECTED": "REJECTED",
+        }
+        status = aliases.get(status, status)
+        if status not in ("VERIFIED", "REJECTED", "REQUIRES_MANUAL_REVIEW", "PENDING"):
+            raise APIError(
+                "Status must be VERIFIED, REJECTED, REQUIRES_MANUAL_REVIEW, or PENDING",
+                status_code=400,
+            )
 
         doc = self.documents.find_one({"_id": document_id})
         if not doc:
@@ -71,7 +86,13 @@ class VerificationService:
         calc_hash = sha256.hexdigest()
 
         hash_matches = calc_hash == stored_hash
-        status = "VERIFIED" if hash_matches else "REJECTED"
+        # Integrity-only auto check: mismatch → failed; match keeps pending for manual authenticity review
+        if hash_matches:
+            status = doc.get("verification_status") if doc.get("verification_status") in ("VERIFIED", "REQUIRES_MANUAL_REVIEW") else "PENDING"
+            notes = "SHA-256 integrity check passed (authenticity still requires manual or authority review)"
+        else:
+            status = "REJECTED"
+            notes = "Hash mismatch detected — file may have been tampered with"
 
         now = datetime.utcnow().isoformat()
         self.documents.update_one(
@@ -79,8 +100,9 @@ class VerificationService:
             {
                 "$set": {
                     "verification_status": status,
-                    "verification_notes": "SHA-256 integrity check passed" if hash_matches else "Hash mismatch detected",
-                    "verified_at": now,
+                    "verification_notes": notes,
+                    "verified_at": now if status == "VERIFIED" else doc.get("verified_at"),
+                    "integrity_checked_at": now,
                 }
             },
         )

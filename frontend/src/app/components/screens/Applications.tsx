@@ -18,8 +18,10 @@ import { Card, CardContent } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { api } from '../../../services/api';
+import { useWallet } from '../../context/WalletContext';
 
 export function Applications() {
+  const { address } = useWallet();
   const [applications, setApplications] = useState<any[]>([]);
   const [selectedFilter, setSelectedFilter] = useState('ALL');
   const [loading, setLoading] = useState(true);
@@ -27,7 +29,7 @@ export function Applications() {
   const loadApplications = async () => {
     try {
       setLoading(true);
-      const data = await api.applications.list();
+      const data = await api.applications.list(undefined, address || undefined);
       setApplications(data);
     } catch (err) {
       console.error('Failed to load applications', err);
@@ -38,7 +40,7 @@ export function Applications() {
 
   useEffect(() => {
     loadApplications();
-  }, []);
+  }, [address]);
 
   const filtered = applications.filter((app) => {
     if (selectedFilter === 'ALL') return true;
