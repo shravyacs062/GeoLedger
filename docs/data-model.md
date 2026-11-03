@@ -10,10 +10,15 @@ Ids are strings. Mongo uses ObjectId hex; SQLite uses generated string ids. Seri
 
 | Field | Notes |
 |---|---|
-| `wallet_address` | Unique, `0x` + 40 hex chars |
-| `created_at` | UTC timestamp |
+| `email` | Unique for password accounts |
+| `password_hash` | Werkzeug hash (null for wallet-only legacy rows) |
+| `role` | `USER` \| `ADMIN` \| `REGISTRAR` |
+| `full_name`, `phone` | Profile fields |
+| `wallet_address` | Optional linked MetaMask address |
+| `is_active` | Soft disable |
+| `created_at`, `updated_at` | |
 
-Created only by `POST /auth/register`. Not used for request authorization.
+Created by `POST /auth/register` (password or wallet). Authorization uses JWT claims derived from this record.
 
 ### `properties`
 
@@ -29,6 +34,7 @@ Created only by `POST /auth/register`. Not used for request authorization.
 | `status` | `REGISTERED` \| `PENDING_TRANSFER` \| `TRANSFERRED` \| `UNDER_DISPUTE` |
 | `blockchain_tx_hash` | Registration tx |
 | `blockchain_block_number` | |
+| `qr_code_url`, `qr_generated_at` | Public verify link for QR |
 | `application_id` | Originating application (manual create path) |
 | `document_ids` | Optional |
 | `created_at`, `updated_at` | |
@@ -41,12 +47,15 @@ Seeded demo: `SN-DEMO-001` / `GL-PROP-001` in Thandavapura, Nanjangud, Mysuru, K
 |---|---|
 | `application_type` | See types below |
 | `applicant_wallet` | |
+| `applicant_user_id` | Authenticated user id |
 | `survey_number` | |
 | `property_id` | Defaults to survey number |
 | `status` | See [workflows](./workflows.md#status-machine) |
 | `required_documents` | String list of types |
 | `submitted_documents` | Document ids |
-| `party_details` | Applicant / buyer / seller objects |
+| `party_details` | Applicant / buyer / seller / heirs / deceased owner |
+| `admin_remarks` | Correction or rejection notes |
+| `correction_requested` | Boolean |
 | `government_reference` | `GOV-REQ-<survey_number>` |
 | `rejection_reason` | |
 | `verification_summary` | Filled on approve |
@@ -66,9 +75,11 @@ Seeded demo: `SN-DEMO-001` / `GL-PROP-001` in Thandavapura, Nanjangud, Mysuru, K
 | `storage_location` | Absolute path under `UPLOAD_FOLDER` |
 | `file_size` | Bytes |
 | `document_hash` | SHA-256 hex |
-| `verification_status` | `PENDING` on upload; then `VERIFIED` / `REJECTED` / `UNVERIFIED` (model default) |
-| `verification_score` | Set to 100 on upload |
-| `verification_checks` | Integrity check objects |
+| `verification_status` | `PENDING` \| `VERIFIED` \| `REJECTED` \| `REQUIRES_MANUAL_REVIEW` |
+| `verification_score` | Heuristic score |
+| `verification_checks` | Integrity / cross-check objects |
+| `extracted_fields` / `ocr_meta` | Automated extraction |
+| `document_number`, `issuing_authority`, `issue_date` | When extracted |
 | `verification_notes` | Reviewer remarks |
 | `uploaded_at`, `verified_at` | |
 
@@ -77,12 +88,29 @@ Seeded demo: `SN-DEMO-001` / `GL-PROP-001` in Thandavapura, Nanjangud, Mysuru, K
 | Field | Notes |
 |---|---|
 | `property_id`, `survey_number`, `application_id` | |
-| `transaction_type` | `REGISTRATION` or `OWNERSHIP_TRANSFER` |
+| `transaction_type` | `REGISTRATION`, `OWNERSHIP_TRANSFER`, or `INHERITANCE_TRANSFER` |
 | `previous_owner`, `new_owner` | Wallets or `GOVERNMENT_AUTHORITY` |
 | `from_address`, `to_address` | Registrar and new owner |
 | `tx_hash`, `block_number` | |
 | `status` | `CONFIRMED` |
 | `timestamp` | |
+
+### `notifications`
+
+| Field | Notes |
+|---|---|
+| `recipient_id` / `recipient_wallet` / `recipient_role` | Targeting |
+| `title`, `message`, `notification_type` | |
+| `related_id`, `related_type` | e.g. application |
+| `is_read`, `read_at`, `created_at` | |
+
+### `audit_logs`
+
+Admin/user action trail: `action`, `entity_type`, `entity_id`, `actor_*`, `details`, `created_at`.
+
+### `valuation_params`
+
+Key `default` stores adjustable base rates and multipliers for the valuation module.
 
 ## Application types
 
@@ -102,7 +130,7 @@ Defined in `backend/utils/document_requirements.py`.
 |---|---|
 | `NEW_REGISTRATION` | `SALE_DEED`, `ID_PROOF`, `MUTATION_CERTIFICATE` |
 | `OWNERSHIP_TRANSFER` | `SALE_DEED`, `SELLER_ID_PROOF`, `BUYER_ID_PROOF`, `MUTATION_CERTIFICATE` |
-| `INHERITANCE_TRANSFER` | `DEATH_CERTIFICATE`, `LEGAL_HEIR_CERTIFICATE`, `FAMILY_TREE`, `NOC_FROM_LEGAL_HEIRS`, `MUTATION_CERTIFICATE`, `NEW_OWNER_ID_PROOF` |
+| `INHERITANCE_TRANSFER` | `DEATH_CERTIFICATE`, `LEGAL_HEIR_CERTIFICATE`, `FAMILY_TREE`, `NOC_FROM_LEGAL_HEIRS`, `MUTATION_CERTIFICATE`, `EXISTING_OWNERSHIP_DOCUMENTS`, `NEW_OWNER_ID_PROOF` |
 
 ## Indexes (Mongo only)
 

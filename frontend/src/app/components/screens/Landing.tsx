@@ -2,11 +2,11 @@ import { Link } from 'react-router-dom';
 import { Map, Shield, Globe, Lock, FileCheck, Users } from 'lucide-react';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
-import { useWallet } from '../../context/WalletContext';
-import { shortenAddress } from '../../../services/wallet';
+import { useAuth } from '../../context/AuthContext';
 
 export function Landing() {
-  const { isConnected, address } = useWallet();
+  const { isAuthenticated, isAdmin } = useAuth();
+  const homePath = isAuthenticated ? (isAdmin ? '/admin' : '/dashboard') : '/login';
   const features = [
     {
       icon: Shield,
@@ -52,11 +52,16 @@ export function Landing() {
               </div>
               <span className="font-semibold text-[#0F172A]">GeoLedger</span>
             </div>
-            <Link to={isConnected ? '/dashboard' : '/login'}>
-              <Button className="bg-[#0F766E] hover:bg-[#0F766E]/90">
-                {isConnected && address ? shortenAddress(address) : 'Connect MetaMask'}
-              </Button>
-            </Link>
+            <div className="flex items-center gap-2">
+              <Link to="/admin/login">
+                <Button variant="outline" className="border-[#E2E8F0]">Admin</Button>
+              </Link>
+              <Link to={homePath}>
+                <Button className="bg-[#0F766E] hover:bg-[#0F766E]/90">
+                  {isAuthenticated ? 'Open Dashboard' : 'User Login'}
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
       </header>
@@ -73,9 +78,19 @@ export function Landing() {
               to create a transparent, tamper-proof land registry system for modern governance.
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
-              <Link to={isConnected ? '/dashboard' : '/login'}>
+              <Link to={homePath}>
                 <Button size="lg" className="bg-[#0F766E] hover:bg-[#0F766E]/90 w-full sm:w-auto">
-                  {isConnected ? 'Open Dashboard' : 'Connect MetaMask'}
+                  {isAuthenticated ? 'Open Dashboard' : 'Citizen Login'}
+                </Button>
+              </Link>
+              <Link to="/admin/login">
+                <Button size="lg" variant="outline" className="w-full sm:w-auto border-[#E2E8F0]">
+                  Admin / Registrar
+                </Button>
+              </Link>
+              <Link to="/public/verify/SN-DEMO-001">
+                <Button size="lg" variant="outline" className="w-full sm:w-auto border-[#E2E8F0]">
+                  Public Verify Demo
                 </Button>
               </Link>
               <Link to="/search">
@@ -152,7 +167,7 @@ export function Landing() {
 
         <div className="grid md:grid-cols-3 gap-8">
           {[
-            { step: '01', title: 'Connect Wallet', desc: 'Authenticate using MetaMask or Web3 wallet' },
+            { step: '01', title: 'Sign In', desc: 'Log in as a citizen or registrar with your GeoLedger account' },
             { step: '02', title: 'Search or Register', desc: 'Find existing properties or register new land parcels' },
             { step: '03', title: 'Verify & Transfer', desc: 'Complete secure ownership transfers on blockchain' }
           ].map((item, index) => (

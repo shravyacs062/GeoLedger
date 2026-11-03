@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Home,
@@ -11,17 +12,37 @@ import {
   Bell,
   User,
   LogOut,
+  Users,
+  Calculator,
+  LayoutDashboard,
 } from 'lucide-react';
 import { useWallet } from '../context/WalletContext';
+import { useAuth } from '../context/AuthContext';
 import { shortenAddress } from '../../services/wallet';
+import { api } from '../../services/api';
 
-const navItems = [
+const userNav = [
   { icon: Home, label: 'Dashboard', path: '/dashboard' },
   { icon: Building2, label: 'My Properties', path: '/properties' },
   { icon: Search, label: 'Property Search', path: '/search' },
   { icon: FileText, label: 'Register Property', path: '/register' },
+  { icon: ArrowLeftRight, label: 'Ownership Transfer', path: '/transfer' },
+  { icon: Users, label: 'Inheritance Transfer', path: '/inheritance' },
   { icon: ClipboardList, label: 'Applications', path: '/applications' },
+  { icon: Calculator, label: 'Land Valuation', path: '/valuation' },
   { icon: Shield, label: 'Verify Documents', path: '/verify' },
+  { icon: Map, label: 'GIS Map', path: '/map' },
+  { icon: Bell, label: 'Notifications', path: '/notifications' },
+  { icon: User, label: 'Profile', path: '/profile' },
+];
+
+const adminNav = [
+  { icon: LayoutDashboard, label: 'Admin Dashboard', path: '/admin' },
+  { icon: ClipboardList, label: 'All Applications', path: '/applications' },
+  { icon: Building2, label: 'Properties', path: '/properties' },
+  { icon: Shield, label: 'Document Review', path: '/verify' },
+  { icon: Users, label: 'User Management', path: '/admin/users' },
+  { icon: Calculator, label: 'Valuation Params', path: '/valuation' },
   { icon: ArrowLeftRight, label: 'Transactions', path: '/transactions' },
   { icon: Map, label: 'GIS Map', path: '/map' },
   { icon: Bell, label: 'Notifications', path: '/notifications' },
@@ -32,25 +53,35 @@ export function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { address, disconnect, chainName, isLocalNetwork } = useWallet();
+  const { user, isAdmin, logout } = useAuth();
+  const [unreadCount, setUnreadCount] = useState(0);
+
+  const navItems = isAdmin ? adminNav : userNav;
+
+  useEffect(() => {
+    api.notifications.list()
+      .then((items) => setUnreadCount((items || []).filter((n: any) => !n.is_read).length))
+      .catch(() => setUnreadCount(0));
+  }, [location.pathname]);
 
   const isItemActive = (path: string) => {
-    if (path === '/dashboard') return location.pathname === '/dashboard';
+    if (path === '/dashboard' || path === '/admin') return location.pathname === path;
     if (path === '/register') return location.pathname === '/register' || location.pathname === '/applications/new';
-    if (path === '/properties') return location.pathname === '/properties' || (location.pathname.startsWith('/properties/') && location.pathname !== '/properties');
-    if (path === '/applications') return location.pathname === '/applications' || (location.pathname.startsWith('/applications/') && location.pathname !== '/applications/new');
-    return location.pathname === path;
+    if (path === '/properties') return location.pathname.startsWith('/properties');
+    if (path === '/applications') return location.pathname.startsWith('/applications') || location.pathname.startsWith('/admin/applications');
+    return location.pathname === path || location.pathname.startsWith(`${path}/`);
   };
 
   return (
     <aside className="fixed left-0 top-0 h-screen w-64 bg-[#0F172A] text-white flex flex-col">
       <div className="p-6 border-b border-[#334155]">
-        <Link to="/dashboard" className="flex items-center gap-3">
+        <Link to={isAdmin ? '/admin' : '/dashboard'} className="flex items-center gap-3">
           <div className="w-10 h-10 bg-[#0F766E] rounded-lg flex items-center justify-center">
             <Map className="w-6 h-6" />
           </div>
           <div>
             <h1 className="font-semibold">GeoLedger</h1>
-            <p className="text-xs text-[#64748B]">Land Registry</p>
+            <p className="text-xs text-[#64748B]">{isAdmin ? 'Admin Portal' : 'Land Registry'}</p>
           </div>
         </Link>
       </div>
@@ -71,7 +102,12 @@ export function Sidebar() {
               }`}
             >
               <Icon className="w-5 h-5 flex-shrink-0" />
-              <span className="text-sm">{item.label}</span>
+              <span className="text-sm flex-1">{item.label}</span>
+              {item.path === '/notifications' && unreadCount > 0 && (
+                <span className="ml-auto text-[10px] font-semibold bg-[#F59E0B] text-white rounded-full min-w-[1.25rem] h-5 px-1.5 flex items-center justify-center">
+                  {unreadCount}
+                </span>
+              )}
             </Link>
           );
         })}
@@ -83,9 +119,9 @@ export function Sidebar() {
             <User className="w-5 h-5" />
           </div>
           <div className="min-w-0">
-            <p className="text-sm font-medium truncate">{address ? shortenAddress(address) : 'Not connected'}</p>
+            <p className="text-sm font-medium truncate">{user?.full_name || user?.email || 'Account'}</p>
             <p className={`text-xs truncate ${isLocalNetwork ? 'text-[#5EEAD4]' : 'text-[#FBBF24]'}`}>
-              {chainName}
+              {address ? shortenAddress(address) : chainName}
             </p>
           </div>
         </Link>
@@ -93,12 +129,13 @@ export function Sidebar() {
           type="button"
           onClick={async () => {
             await disconnect();
-            navigate('/login');
+            await logout();
+            navigate(isAdmin ? '/admin/login' : '/login');
           }}
           className="flex w-full items-center gap-3 px-4 py-2.5 rounded-lg text-sm text-[#E2E8F0] hover:bg-[#334155]"
         >
           <LogOut className="w-4 h-4" />
-          Disconnect
+          Log out
         </button>
       </div>
     </aside>

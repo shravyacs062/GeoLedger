@@ -14,58 +14,30 @@ export function PropertySearch() {
   const [properties, setProperties] = useState<any[]>([]);
   const [filteredProperties, setFilteredProperties] = useState<any[]>([]);
   const [activeGeoJson, setActiveGeoJson] = useState<any>(null);
+  const [gisMeta, setGisMeta] = useState<any>(null);
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const geojsonLayerRef = useRef<L.GeoJSON | null>(null);
 
   useEffect(() => {
     api.properties.list().catch(() => []).then((data) => {
-      const list = (data && data.length > 0)
-        ? data.map((p: any) => ({
-            id: p.survey_number || p.property_id || 'SN-DEMO-001',
-            location: `${p.village || 'Block A, Survey 123'}, ${p.district || 'Mysuru'}`,
-            area: `${p.area || 2500} sq ft`,
-            owner: p.owner_wallet ? `${p.owner_wallet.substring(0, 6)}...${p.owner_wallet.slice(-4)}` : '0x7a3f...9b2c',
-            status: p.status === 'REGISTERED' || !p.status ? 'Verified' : 'Pending',
-            lat: '12.1812',
-            lon: '76.6852',
-            raw: p,
-          }))
-        : [
-            {
-              id: 'SN-2023-4521',
-              location: 'Block A, Survey 123, District North',
-              area: '2,500 sq ft',
-              owner: '0x7a3f...9b2c',
-              status: 'Verified',
-              lat: '28.7041',
-              lon: '77.1025'
-            },
-            {
-              id: 'SN-2023-4522',
-              location: 'Block B, Survey 124, District Central',
-              area: '3,200 sq ft',
-              owner: '0x8b4c...1a3d',
-              status: 'Pending',
-              lat: '28.7051',
-              lon: '77.1035'
-            },
-            {
-              id: 'SN-2023-4523',
-              location: 'Block C, Survey 125, District South',
-              area: '1,800 sq ft',
-              owner: '0x9c5d...2b4e',
-              status: 'Verified',
-              lat: '28.7061',
-              lon: '77.1045'
-            },
-          ];
+      const list = (data || []).map((p: any) => ({
+        id: p.survey_number || p.property_id,
+        location: [p.village, p.district].filter(Boolean).join(', ') || 'Registered parcel',
+        area: p.area ? `${p.area} sq ft` : '—',
+        owner: p.owner_wallet
+          ? `${p.owner_wallet.substring(0, 6)}...${p.owner_wallet.slice(-4)}`
+          : '—',
+        status: p.status || 'REGISTERED',
+        raw: p,
+      }));
       setProperties(list);
       setFilteredProperties(list);
     });
 
     api.gis.getBySurvey('SN-DEMO-001').then((res) => {
       if (res?.geojson) setActiveGeoJson(res.geojson);
+      setGisMeta(res);
     }).catch(() => {});
   }, []);
 
@@ -83,9 +55,8 @@ export function PropertySearch() {
     setFilteredProperties(matched);
 
     api.gis.getBySurvey(q.toUpperCase()).then((res) => {
-      if (res?.geojson) {
-        setActiveGeoJson(res.geojson);
-      }
+      if (res?.geojson) setActiveGeoJson(res.geojson);
+      setGisMeta(res);
     }).catch(() => {});
   };
 
@@ -182,28 +153,33 @@ export function PropertySearch() {
               <CardHeader>
                 <CardTitle className="text-[#0F172A]">GIS Map View</CardTitle>
                 <CardDescription className="text-[#64748B]">
-                  Click on parcels to view details
+                  Leaflet + OpenStreetMap parcel overlay
                 </CardDescription>
               </CardHeader>
               <CardContent>
+                {gisMeta && (
+                  <div className="mb-3 rounded-lg border border-[#FDE68A] bg-[#FFFBEB] px-3 py-2 text-xs text-[#92400E]">
+                    Data source: <strong>{gisMeta.data_source || gisMeta.status}</strong>
+                    {' · '}
+                    {gisMeta.disclaimer ||
+                      (gisMeta.found
+                        ? 'Demo GeoJSON — not verified government cadastral data.'
+                        : 'Synthetic placeholder parcel — not verified government cadastral data.')}
+                  </div>
+                )}
                 <div className="aspect-video bg-gradient-to-br from-[#0F766E]/20 to-[#38BDF8]/20 rounded-xl relative overflow-hidden">
                   <div ref={mapContainerRef} className="absolute inset-0 z-0 w-full h-full" />
 
-                  {/* Legend */}
                   <div className="absolute bottom-4 left-4 bg-white rounded-lg shadow-md p-3 z-10 pointer-events-auto">
-                    <p className="text-xs font-medium text-[#0F172A] mb-2">Status</p>
+                    <p className="text-xs font-medium text-[#0F172A] mb-2">Parcel source</p>
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <div className="w-3 h-3 bg-[#0F766E] rounded-full"></div>
-                        <span className="text-xs text-[#64748B]">Verified</span>
+                        <span className="text-xs text-[#64748B]">Demo GeoJSON (found)</span>
                       </div>
                       <div className="flex items-center gap-2">
                         <div className="w-3 h-3 bg-[#38BDF8] rounded-full"></div>
-                        <span className="text-xs text-[#64748B]">Pending</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 bg-[#16A34A] rounded-full"></div>
-                        <span className="text-xs text-[#64748B]">Active</span>
+                        <span className="text-xs text-[#64748B]">Synthetic (generated)</span>
                       </div>
                     </div>
                   </div>

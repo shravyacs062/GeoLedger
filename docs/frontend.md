@@ -2,93 +2,79 @@
 
 Vite + React 19 + TypeScript. Entry: `frontend/src/main.tsx` → `frontend/src/App.tsx` → `frontend/src/app/App.tsx`.
 
-Dev server: `npm run dev` (port 5173). API base: `import.meta.env.VITE_API_BASE_URL` or `http://127.0.0.1:5000` (`src/services/api.ts`).
+Dev server: `npm run dev` (port 5173). API base: `VITE_API_BASE_URL` or `http://127.0.0.1:5000`.
+
+## Auth model
+
+`AuthProvider` (`src/app/context/AuthContext.tsx`) owns the JWT session:
+
+1. Login/register → store token + user in `localStorage`
+2. Axios sends `Authorization: Bearer <token>` via `setAuthToken`
+3. `RequireAuth` / `RequireAdmin` guard routes
+4. Logout clears token and calls `POST /auth/logout`
+
+`WalletProvider` remains for optional MetaMask linking (Profile), not as the primary login gate.
 
 ## Routes
 
-| Path | Screen | Notes |
+| Path | Screen | Guard |
 |---|---|---|
-| `/` | `Landing` | Public marketing page |
-| `/login` | `Login` | Real MetaMask connect (`eth_requestAccounts`) → `/dashboard` |
-| `/dashboard` | `Dashboard` | Counts from properties, applications, transactions |
-| `/properties` | `MyProperties` | Owner inventory |
-| `/properties/:propertyId` | `PropertyDetails` | Parcel + GIS |
-| `/property/details` | `PropertyDetails` | Alternate path |
-| `/search` | `PropertySearch` | Search + map |
-| `/map` | `PropertySearch` | Same screen |
-| `/applications` | `Applications` | Application list |
-| `/applications/:applicationId` | `ApplicationDetails` | Status, docs, approve |
-| `/applications/new` | `PropertyRegistration` | 4-step wizard |
-| `/register` | redirect | → `/applications/new` |
-| `/transfer` | `PropertyTransfer` | Ownership transfer form |
-| `/verify` | `DocumentVerification` | Local SHA-256 + demo public verify |
-| `/transactions` | `Transactions` | Ledger activity |
-| `/notifications` | `Notifications` | |
-| `/profile` | `Profile` | |
-| `*` | redirect | → `/` |
+| `/` | `Landing` | public |
+| `/login` | `UserLogin` | public |
+| `/admin/login` | `AdminLogin` | public |
+| `/public/verify/:identifier` | `PublicVerify` | public |
+| `/admin` | `AdminDashboard` | admin |
+| `/admin/applications/:applicationId` | `ApplicationDetails` | admin |
+| `/dashboard` | `Dashboard` | auth |
+| `/properties` | `MyProperties` | auth |
+| `/properties/:propertyId` | `PropertyDetails` | auth |
+| `/search`, `/map` | `PropertySearch` | auth |
+| `/applications` | `Applications` | auth |
+| `/applications/:applicationId` | `ApplicationDetails` | auth |
+| `/applications/new`, `/register` | `PropertyRegistration` | auth |
+| `/transfer` | `PropertyTransfer` | auth |
+| `/inheritance` | `InheritanceTransfer` | auth |
+| `/valuation` | `LandValuation` | auth |
+| `/verify` | `DocumentVerification` | auth |
+| `/transactions` | `Transactions` | auth |
+| `/notifications` | `Notifications` | auth |
+| `/profile` | `Profile` | auth |
 
-`/` and `/login` are public. Every other route is wrapped in `RequireWallet` and redirects to `/login` until MetaMask is connected.
-
-Authenticated chrome (`Layout`) is a desktop sidebar plus `MobileNav` below `lg`. Brand color is teal `#0F766E` on slate `#0F172A`.
-
-## MetaMask
-
-`WalletProvider` (`src/app/context/WalletContext.tsx`) owns the session:
-
-1. `eth_requestAccounts` via the MetaMask provider (prefers `isMetaMask` when several wallets are injected)
-2. `wallet_switchEthereumChain` / `wallet_addEthereumChain` for Hardhat Localhost (`31337`, `http://127.0.0.1:8545`)
-3. `POST /auth/register` with the address (409 already-registered is ignored)
-4. Restore on reload with `eth_accounts` if `localStorage` has `geoledger.wallet.connected`
-5. Listen for `accountsChanged` and `chainChanged`
-
-Registration and transfer forms use that address as `applicant_wallet` / `seller_wallet`. The sidebar and profile show the live account, network, and ETH balance. Disconnect clears the session and calls `wallet_revokePermissions` when MetaMask supports it.
-
-## Registration wizard
-
-`PropertyRegistration` steps:
-
-1. Property details (survey, location, area, land type)
-2. Owner information (name, wallet)
-3. Document upload
-4. Review and submit → `POST /applications`
+Sidebar nav differs for admin vs user (transfer, inheritance, valuation, admin dashboard).
 
 ## API client (`src/services/api.ts`)
 
-Axios instance. Successful payloads unwrap `res.data.data`.
-
 | Namespace | Methods |
 |---|---|
+| `api.auth` | `login`, `adminLogin`, `registerAccount`, `me`, `updateProfile`, `logout`, `listUsers`, `setRole`, wallet `register` |
+| `api.dashboard` | `admin`, `user` |
+| `api.notifications` | `list`, `markRead`, `markAllRead` |
+| `api.valuation` | `estimate`, `getParams`, `updateParams` |
+| `api.qr` | `get`, `generate` |
 | `api.properties` | `list`, `getBySurvey`, `create` |
-| `api.applications` | `list`, `get`, `create`, `updateStatus`, `approve` |
+| `api.applications` | `list`, `get`, `create`, `updateStatus`, `approve`, `reject`, `requestDocuments` |
 | `api.documents` | `upload`, `getByApp`, `getByProperty`, `delete`, `getDownloadUrl` |
 | `api.verification` | `verify`, `review` |
-| `api.ownership` | `submitTransfer` / `transfer`, `getHistory` |
+| `api.ownership` | `transfer`, `getHistory` |
 | `api.gis` | `getBySurvey` |
 | `api.blockchain` | `getProperty`, `register`, `transfer`, `getTransactions` |
 | `api.publicVerify` | `verifyProperty` |
 
+## Feature screens of note
+
+- **InheritanceTransfer** — legal checklist upload + heir details
+- **AdminDashboard** — live pending metrics
+- **PublicVerify** — unauthenticated QR landing page
+- **LandValuation** — estimate + admin params
+- **PropertyDetails** — live property load + QR image
+- **ApplicationDetails** — admin-only approve/reject/request-docs actions
+
 ## GIS map
 
-Property search and details call `/gis/property/:surveyNumber` and render the returned GeoJSON `Polygon` with Leaflet. Demo parcels sit around Thandavapura (Mysuru). Unknown surveys still render because the API synthesizes a rectangle.
-
-## Document hashing in the browser
-
-`DocumentVerification` uses `crypto.subtle.digest("SHA-256")` on a user-selected file, then calls `GET /verify/property/SN-DEMO-001` as a demo of public records. Treat that screen as a UI prototype of hash verification, not a full client-side match against every stored hash.
+Property search calls `/gis/property/:surveyNumber` and renders GeoJSON with Leaflet. Demo parcels around Thandavapura (Mysuru). Unknown surveys still render a synthetic rectangle.
 
 ## UI kit
 
-`frontend/src/app/components/ui/` is a shadcn/Radix-style set (button, card, dialog, sidebar, …). Styling is Tailwind v4 via `@tailwindcss/vite` (`frontend/vite.config.ts`). Path alias: `@` → `./src`.
+`frontend/src/app/components/ui/` — shadcn/Radix-style components. Tailwind v4 via `@tailwindcss/vite`. Brand teal `#0F766E` on slate `#0F172A`.
 
-## Duplicate source tree
-
-`frontend/src/components/` contains an older parallel copy of screens and UI primitives. The running app uses `frontend/src/app/`. Prefer editing `src/app/` unless you intend to delete the duplicate.
-
-## Scripts
-
-```bash
-cd frontend
-npm run dev       # Vite
-npm run build     # tsc -b && vite build
-npm run lint      # ESLint
-npm run preview   # preview production build
-```
+Dead duplicate screens under `frontend/src/components/` are not mounted by `main.tsx`.

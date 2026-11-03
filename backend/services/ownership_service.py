@@ -45,10 +45,18 @@ class OwnershipService:
             raise APIError("Buyer wallet address is required", status_code=400)
 
         validate_wallet_address(buyer_wallet)
+        seller_wallet = validate_wallet_address(seller_wallet)
+
+        if current_owner and seller_wallet.lower() != str(current_owner).lower():
+            raise APIError(
+                "Seller wallet does not match the registered property owner",
+                status_code=403,
+            )
 
         app_payload = {
             "application_type": "OWNERSHIP_TRANSFER",
             "applicant_wallet": seller_wallet,
+            "applicant_user_id": data.get("applicant_user_id"),
             "survey_number": prop.get("survey_number"),
             "property_id": prop.get("property_id") or str(prop.get("_id")),
             "party_details": {

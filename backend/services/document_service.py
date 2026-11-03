@@ -52,6 +52,17 @@ class DocumentService:
 
         document_hash = hashlib.sha256(file_bytes).hexdigest()
 
+        # Duplicate document detection by hash
+        duplicate = self.collection.find_one({"document_hash": document_hash})
+        duplicate_warning = None
+        if duplicate:
+            duplicate_warning = {
+                "name": "DUPLICATE_DOCUMENT",
+                "passed": False,
+                "severity": "MEDIUM",
+                "message": f"Identical file previously uploaded as document {duplicate.get('_id')}",
+            }
+
         unique_id = uuid.uuid4().hex[:12]
         timestamp = datetime.utcnow().strftime("%Y%m%d%H%M%S")
         stored_filename = f"{timestamp}_{unique_id}_{orig_filename}"
@@ -60,6 +71,63 @@ class DocumentService:
 
         with open(file_path, "wb") as stored_file:
             stored_file.write(file_bytes)
+
+        # Automated OCR / field extraction
+        from services.ocr_service import OCRService
+
+        ocr = OCRService().extract_from_bytes(
+            file_bytes, filename=orig_filename, document_type=document_type
+        )
+        extracted = ocr.get("extracted_fields") or {}
+
+        application = None
+        property_record = None
+        other_fields = []
+        if application_id:
+            application = self.db.applications.find_one({"_id": application_id})
+            if application:
+                property_record = self.db.properties.find_one(
+                    {"survey_number": application.get("survey_number")}
+                )
+                other_docs = list(self.collection.find({"application_id": application_id}))
+                other_fields = [
+                    (d.get("extracted_fields") or {}) for d in other_docs
+                ]
+
+        cross_checks = OCRService().cross_check(
+            extracted,
+            application=application,
+            property_record=property_record,
+            other_docs_fields=other_fields,
+        )
+
+        verification_checks = [
+            {
+                "name": "FILE_INTEGRITY",
+                "passed": True,
+                "severity": "LOW",
+                "message": "SHA-256 hash generated and validated against file bytes",
+            },
+            *cross_checks,
+        ]
+        if duplicate_warning:
+            verification_checks.append(duplicate_warning)
+
+        high_severity_fail = any(
+            (not c.get("passed")) and c.get("severity") in ("HIGH", "CRITICAL")
+            for c in verification_checks
+        )
+        medium_fail = any(
+            (not c.get("passed")) and c.get("severity") == "MEDIUM"
+            for c in verification_checks
+        )
+
+        if high_severity_fail:
+            initial_status = "REQUIRES_MANUAL_REVIEW"
+        elif medium_fail:
+            initial_status = "REQUIRES_MANUAL_REVIEW"
+        else:
+            initial_status = "PENDING"
 
         now = datetime.utcnow().isoformat()
 
@@ -72,16 +140,19 @@ class DocumentService:
             "storage_location": file_path,
             "file_size": len(file_bytes),
             "document_hash": document_hash,
-            "verification_status": "PENDING",
-            "verification_score": 100,
-            "verification_checks": [
-                {
-                    "name": "FILE_INTEGRITY",
-                    "passed": True,
-                    "severity": "LOW",
-                    "message": "SHA-256 hash generated and validated against file bytes",
-                }
-            ],
+            "verification_status": initial_status,
+            "verification_score": 100 if not high_severity_fail else 40,
+            "verification_checks": verification_checks,
+            "extracted_fields": extracted,
+            "ocr_meta": {
+                "extraction_method": ocr.get("extraction_method"),
+                "confidence": ocr.get("confidence"),
+                "extracted_at": ocr.get("extracted_at"),
+                "raw_text_preview": ocr.get("raw_text_preview"),
+            },
+            "document_number": extracted.get("document_number"),
+            "issuing_authority": extracted.get("issuing_authority"),
+            "issue_date": extracted.get("issue_date"),
             "verification_notes": None,
             "uploaded_at": now,
             "verified_at": None,

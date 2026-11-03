@@ -31,7 +31,7 @@ React 19 + TypeScript, Vite, Tailwind CSS v4, Radix/shadcn-style UI, Leaflet/rea
 
 The live application lives under `frontend/src/app/`. `frontend/src/App.tsx` re-exports that router. A second, older copy of some screens exists under `frontend/src/components/` and is not what `main.tsx` mounts.
 
-The browser talks to the Flask API for registry data. Identity is the connected MetaMask account (`eth_requestAccounts` via ethers `BrowserProvider`). On connect, the app asks MetaMask to switch to Hardhat Localhost (chain 31337) and registers the address with `POST /auth/register`. Contract writes still go through the backend registrar key, not the user’s MetaMask signature.
+The browser talks to the Flask API for registry data. Primary identity is email/password with JWT (`AuthProvider`). Separate portals exist for citizens (`/login`) and admins (`/admin/login`). MetaMask remains optional for linking a wallet on the Profile screen. Contract writes still go through the backend registrar key, not the user’s MetaMask signature.
 
 ### Backend (`backend/`)
 
@@ -59,16 +59,18 @@ Hardhat 3 workspace. Solidity `^0.8.20`. The contract stores `propertyId → { o
 
 On first empty property collection, `seed_data.py` inserts demo parcel `SN-DEMO-001` (Thandavapura, Nanjangud, Mysuru) owned by Hardhat account `0xf39F…2266`.
 
-Collections: `users`, `properties`, `applications`, `documents`, `transactions`.
+Collections: `users`, `properties`, `applications`, `documents`, `transactions`, `notifications`, `audit_logs`, `valuation_params`.
 
 ## GIS
 
-`GISService` loads `backend/geojson/demo_parcels.json`. If the survey number is not in that file, it synthesizes a rectangular polygon near Mysuru (`12.18°N, 76.68°E`) from an MD5 of the survey number so the map always has something to draw.
+`GISService` loads `backend/geojson/demo_parcels.json`. If the survey number is not in that file, it synthesizes a rectangular polygon near Mysuru (`12.18°N, 76.68°E`) from an MD5 of the survey number so the map always has something to draw. Demo vs generated parcels must not be treated as verified government cadastral data.
 
-## Security model (prototype)
+## Security model
 
-- Documents are hashed with SHA-256 at upload time and stored on disk under `UPLOAD_FOLDER`.
-- Reviewers mark documents `VERIFIED` or `REJECTED`. Integrity re-check recomputes the file hash and compares it to the stored hash.
-- On-chain writes are signed by the backend's `BLOCKCHAIN_PRIVATE_KEY` (the registrar account), not by the applicant's wallet.
-- There is no JWT/session middleware. The SPA treats the MetaMask account as the session (`localStorage` flag + `eth_accounts` restore). `POST /auth/register` stores the wallet if it is new.
-- CORS is wide open. Treat this as a local demo, not a production registry.
+- JWT auth with role-based decorators (`login_required`, `admin_required`) on protected routes.
+- Separate Admin and User login portals; approve/reject/review/blockchain write require admin.
+- Documents are hashed with SHA-256 at upload; OCR/heuristic extraction and cross-checks run automatically; admins mark authenticity.
+- On-chain writes are signed by the backend's `BLOCKCHAIN_PRIVATE_KEY` (registrar), only after approved applications (or explicit admin blockchain routes).
+- CORS is open for local development. Change secrets and tighten CORS before any production deploy.
+
+Feature documentation: [features/README.md](./features/README.md).

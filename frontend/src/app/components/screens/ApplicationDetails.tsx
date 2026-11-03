@@ -2,19 +2,15 @@ import { useState, useEffect } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
-  ArrowRight,
   CheckCircle2,
-  Clock3,
-  FileCheck2,
   FileText,
   MapPin,
   ShieldCheck,
-  AlertCircle,
-  Building2,
   Download,
   RefreshCw,
   XCircle,
   Check,
+  Upload,
 } from 'lucide-react';
 
 import { Layout } from '../Layout';
@@ -22,15 +18,25 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { api } from '../../../services/api';
+import { useAuth } from '../../context/AuthContext';
+
+const STATUS_LABELS: Record<string, string> = {
+  VERIFIED: 'Verified',
+  REJECTED: 'Verification Failed',
+  REQUIRES_MANUAL_REVIEW: 'Requires Manual Review',
+  PENDING: 'Pending Verification',
+};
 
 export function ApplicationDetails() {
   const { applicationId } = useParams<{ applicationId: string }>();
+  const { isAdmin } = useAuth();
   const [app, setApp] = useState<any>(null);
   const [documents, setDocuments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [uploadingType, setUploadingType] = useState<string | null>(null);
 
   const loadData = async () => {
     if (!applicationId) return;
@@ -93,14 +99,56 @@ export function ApplicationDetails() {
     setActionLoading(true);
     setErrorMsg(null);
     try {
-      await api.applications.updateStatus(applicationId!, {
-        status: 'REJECTED',
-        rejection_reason: reason,
-      });
+      await api.applications.reject(applicationId!, reason);
       setSuccessMsg('Application marked as REJECTED.');
       await loadData();
     } catch (err: any) {
       setErrorMsg(err?.response?.data?.message || err.message || 'Rejection failed');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleRequestDocs = async () => {
+    const remarks = prompt('What additional documents or corrections are required?');
+    if (!remarks) return;
+    setActionLoading(true);
+    setErrorMsg(null);
+    try {
+      await api.applications.requestDocuments(applicationId!, remarks);
+      setSuccessMsg('Additional documents requested from applicant.');
+      await loadData();
+    } catch (err: any) {
+      setErrorMsg(err?.response?.data?.message || err.message || 'Request failed');
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleUploadDoc = async (docType: string, file: File | null) => {
+    if (!file || !applicationId) return;
+    setUploadingType(docType);
+    setErrorMsg(null);
+    try {
+      await api.documents.upload(applicationId, file, docType);
+      setSuccessMsg(`${docType.replaceAll('_', ' ')} uploaded.`);
+      await loadData();
+    } catch (err: any) {
+      setErrorMsg(err?.response?.data?.message || err.message || 'Upload failed');
+    } finally {
+      setUploadingType(null);
+    }
+  };
+
+  const handleReviewDoc = async (docId: string, status: string) => {
+    setActionLoading(true);
+    setErrorMsg(null);
+    try {
+      await api.verification.review(docId, status, `Marked ${status} by registrar`);
+      setSuccessMsg(`Document ${status}`);
+      await loadData();
+    } catch (err: any) {
+      setErrorMsg(err?.response?.data?.message || err.message || 'Review failed');
     } finally {
       setActionLoading(false);
     }
@@ -176,9 +224,9 @@ export function ApplicationDetails() {
             </p>
           </div>
 
-          {/* Action buttons for Authorized Officer */}
+          {/* Action buttons for Authorized Officer (admin only) */}
           <div className="flex flex-wrap gap-2">
-            {!isCompleted && app.status !== 'REJECTED' && (
+            {isAdmin && !isCompleted && app.status !== 'REJECTED' && (
               <>
                 {!allDocsVerified && (
                   <Button
@@ -199,6 +247,16 @@ export function ApplicationDetails() {
                 >
                   <ShieldCheck className="mr-1.5 h-4 w-4" />
                   {actionLoading ? 'Processing On-Chain...' : 'Approve & Execute On-Chain'}
+                </Button>
+
+                <Button
+                  onClick={handleRequestDocs}
+                  disabled={actionLoading}
+                  variant="outline"
+                  className="border-[#E2E8F0]"
+                >
+                  <FileText className="mr-1.5 h-4 w-4" />
+                  Request Documents
                 </Button>
 
                 <Button
@@ -285,10 +343,48 @@ export function ApplicationDetails() {
               <CardHeader>
                 <CardTitle className="text-base text-[#0F172A]">Submitted Legal Documents</CardTitle>
                 <CardDescription>
-                  Cryptographic SHA-256 integrity hash computed directly from file bytes.
+                  SHA-256 integrity hash, extraction results, and admin review actions.
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="space-y-4">
+                {/* Missing required docs upload */}
+                {(app.required_documents || []).length > 0 && (
+                  <div className="space-y-2 rounded-lg border border-dashed border-[#CBD5E1] p-4">
+                    <p className="text-sm font-medium text-[#0F172A]">Document checklist / upload</p>
+                    {(app.required_documents || []).map((docType: string) => {
+                      const existing = documents.find((d) => d.document_type === docType);
+                      return (
+                        <div key={docType} className="flex items-center justify-between gap-2 text-sm">
+                          <div>
+                            <p className="font-medium">{docType.replaceAll('_', ' ')}</p>
+                            <p className="text-xs text-[#64748B]">
+                              {existing
+                                ? STATUS_LABELS[existing.verification_status] || existing.verification_status
+                                : 'Missing — upload required'}
+                            </p>
+                          </div>
+                          {(!existing ||
+                            ['REJECTED', 'REQUIRES_MANUAL_REVIEW'].includes(existing.verification_status) ||
+                            app.status === 'DOCUMENTS_PENDING' ||
+                            app.correction_requested) && (
+                            <label className="inline-flex items-center gap-1 text-[#0F766E] cursor-pointer text-xs">
+                              <Upload className="w-3.5 h-3.5" />
+                              {uploadingType === docType ? 'Uploading…' : existing ? 'Replace' : 'Upload'}
+                              <input
+                                type="file"
+                                className="hidden"
+                                accept=".pdf,.png,.jpg,.jpeg,.txt"
+                                disabled={!!uploadingType}
+                                onChange={(e) => handleUploadDoc(docType, e.target.files?.[0] || null)}
+                              />
+                            </label>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
                 {documents.length === 0 ? (
                   <div className="py-8 text-center text-xs text-[#64748B]">
                     No documents uploaded yet.
@@ -297,45 +393,77 @@ export function ApplicationDetails() {
                   <div className="space-y-3">
                     {documents.map((doc) => {
                       const isDocVerified = doc.verification_status === 'VERIFIED';
+                      const docId = doc.document_id || doc._id;
                       return (
                         <div
-                          key={doc.document_id || doc._id}
-                          className="flex flex-col gap-3 rounded-lg border border-[#E2E8F0] p-4 sm:flex-row sm:items-center sm:justify-between"
+                          key={docId}
+                          className="flex flex-col gap-3 rounded-lg border border-[#E2E8F0] p-4"
                         >
-                          <div className="space-y-1">
-                            <div className="flex items-center gap-2">
-                              <FileText className="h-4 w-4 text-[#0F766E]" />
-                              <p className="font-semibold text-sm text-[#0F172A]">
-                                {doc.document_type?.replace(/_/g, ' ')}
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <FileText className="h-4 w-4 text-[#0F766E]" />
+                                <p className="font-semibold text-sm text-[#0F172A]">
+                                  {doc.document_type?.replace(/_/g, ' ')}
+                                </p>
+                                <Badge
+                                  className={`text-[10px] border-0 ${
+                                    isDocVerified ? 'bg-[#ECFDF5] text-[#0F766E]' : 'bg-[#FEF3C7] text-[#B45309]'
+                                  }`}
+                                >
+                                  {STATUS_LABELS[doc.verification_status] || doc.verification_status}
+                                </Badge>
+                              </div>
+                              <p className="text-xs text-[#64748B]">
+                                File: {doc.filename} • Size: {Math.round((doc.file_size || 1024) / 1024)} KB
                               </p>
-                              <Badge
-                                className={`text-[10px] border-0 ${
-                                  isDocVerified ? 'bg-[#ECFDF5] text-[#0F766E]' : 'bg-[#FEF3C7] text-[#B45309]'
-                                }`}
-                              >
-                                {doc.verification_status}
-                              </Badge>
+                              <p className="font-mono text-[10px] text-[#475569] break-all">
+                                SHA-256: <span className="text-[#0F766E]">{doc.document_hash}</span>
+                              </p>
                             </div>
-                            <p className="text-xs text-[#64748B]">
-                              File: {doc.filename} • Size: {Math.round((doc.file_size || 1024) / 1024)} KB
-                            </p>
-                            <p className="font-mono text-[10px] text-[#475569] break-all">
-                              SHA-256: <span className="text-[#0F766E]">{doc.document_hash}</span>
-                            </p>
+
+                            <div className="flex flex-wrap items-center gap-2 shrink-0">
+                              <a
+                                href={api.documents.getDownloadUrl(docId)}
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                <Button variant="outline" size="sm" className="h-8 text-xs">
+                                  <Download className="mr-1 h-3.5 w-3.5" />
+                                  Download
+                                </Button>
+                              </a>
+                              {isAdmin && !isDocVerified && (
+                                <>
+                                  <Button
+                                    size="sm"
+                                    className="h-8 text-xs bg-[#0F766E] hover:bg-[#0F766E]/90"
+                                    disabled={actionLoading}
+                                    onClick={() => handleReviewDoc(docId, 'VERIFIED')}
+                                  >
+                                    Verify
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-8 text-xs text-red-600"
+                                    disabled={actionLoading}
+                                    onClick={() => handleReviewDoc(docId, 'REJECTED')}
+                                  >
+                                    Reject Doc
+                                  </Button>
+                                </>
+                              )}
+                            </div>
                           </div>
 
-                          <div className="flex items-center gap-2 shrink-0">
-                            <a
-                              href={api.documents.getDownloadUrl(doc.document_id || doc._id)}
-                              target="_blank"
-                              rel="noreferrer"
-                            >
-                              <Button variant="outline" size="sm" className="h-8 text-xs">
-                                <Download className="mr-1 h-3.5 w-3.5" />
-                                Download
-                              </Button>
-                            </a>
-                          </div>
+                          {doc.extracted_fields && Object.keys(doc.extracted_fields).length > 0 && (
+                            <div className="bg-[#F8FAFC] rounded p-2 text-[11px] grid sm:grid-cols-2 gap-1">
+                              {Object.entries(doc.extracted_fields).map(([k, v]) => (
+                                <p key={k}><span className="text-[#64748B]">{k}:</span> {String(v)}</p>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       );
                     })}

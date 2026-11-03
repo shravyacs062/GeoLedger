@@ -51,6 +51,14 @@ export function PropertyRegistration() {
   const handleSubmit = async () => {
     try {
       setSubmitting(true);
+      const missing = documents.filter((d) => d.required && !files[d.name]);
+      if (missing.length) {
+        throw new Error(`Upload required documents: ${missing.map((d) => d.label).join(', ')}`);
+      }
+      if (!(address || formData.walletAddress)) {
+        throw new Error('Wallet address is required. Connect MetaMask or enter it in Owner Information.');
+      }
+
       const app = await api.applications.create({
         survey_number: formData.surveyNumber,
         application_type: 'NEW_REGISTRATION',
@@ -58,6 +66,15 @@ export function PropertyRegistration() {
         applicant_id: formData.governmentId,
         applicant_wallet: address || formData.walletAddress,
         wallet_address: address || formData.walletAddress,
+        applicant_email: formData.email,
+        applicant_phone: formData.contactNumber,
+        party_details: {
+          applicant_name: formData.ownerName,
+          applicant_email: formData.email,
+          applicant_phone: formData.contactNumber,
+          government_id: formData.governmentId,
+          residential_address: formData.residentialAddress,
+        },
         property_details: {
           area: Number(formData.area) || 2500,
           location: formData.location,
@@ -69,8 +86,8 @@ export function PropertyRegistration() {
       });
 
       const appId = app._id || app.application_id || app.id;
-      for (const [docName, file] of Object.entries(files)) {
-        await api.documents.upload(appId, file, docName).catch(() => {});
+      for (const [docType, file] of Object.entries(files)) {
+        await api.documents.upload(appId, file, docType);
       }
       navigate(`/applications/${appId}`);
     } catch (err: any) {
@@ -88,12 +105,9 @@ export function PropertyRegistration() {
   ];
 
   const documents = [
-    { name: 'Registration Document', required: true },
-    { name: 'Legal Heir Certificate', required: false },
-    { name: 'Family Tree', required: false },
-    { name: 'Death Certificate', required: false },
-    { name: 'Mutation Certificate', required: true },
-    { name: 'NOC (No Objection Certificate)', required: false },
+    { name: 'SALE_DEED', label: 'Sale Deed', required: true },
+    { name: 'ID_PROOF', label: 'Owner ID Proof', required: true },
+    { name: 'MUTATION_CERTIFICATE', label: 'Mutation Certificate', required: true },
   ];
 
   return (
@@ -328,7 +342,7 @@ export function PropertyRegistration() {
                           <div className="flex items-center gap-2">
                             <FileText className="w-5 h-5 text-[#0F766E]" />
                             <div>
-                              <p className="font-medium text-[#0F172A]">{doc.name}</p>
+                              <p className="font-medium text-[#0F172A]">{doc.label}</p>
                               {doc.required && (
                                 <span className="text-xs text-[#DC2626]">Required</span>
                               )}
