@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Layout } from '../Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
@@ -7,9 +7,10 @@ import { Button } from '../ui/button';
 import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { AlertCircle, Loader2, Upload } from 'lucide-react';
+import { isAxiosError } from 'axios';
 import { api } from '../../../services/api';
-import { useAuth } from '../../context/AuthContext';
-import { useWallet } from '../../context/WalletContext';
+import { useAuth } from '../../context/useAuth';
+import { useWallet } from '../../context/useWallet';
 
 const REQUIRED_DOCS = [
   'DEATH_CERTIFICATE',
@@ -17,7 +18,7 @@ const REQUIRED_DOCS = [
   'FAMILY_TREE',
   'NOC_FROM_LEGAL_HEIRS',
   'MUTATION_CERTIFICATE',
-  'EXISTING_OWNERSHIP_DOCUMENTS',
+  'OWNERSHIP_PROOF',
   'NEW_OWNER_ID_PROOF',
 ];
 
@@ -31,16 +32,12 @@ export function InheritanceTransfer() {
   const [deceasedName, setDeceasedName] = useState('');
   const [deceasedWallet, setDeceasedWallet] = useState('');
   const [relationship, setRelationship] = useState('');
-  const [heirName, setHeirName] = useState(user?.full_name || '');
-  const [heirWallet, setHeirWallet] = useState(address || user?.wallet_address || '');
+  const [heirName, setHeirName] = useState(user?.name || '');
+  const [heirWallet, setHeirWallet] = useState('');
   const [heirsText, setHeirsText] = useState('');
   const [files, setFiles] = useState<Record<string, File | null>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (address && !heirWallet) setHeirWallet(address);
-  }, [address, heirWallet]);
 
   const setFile = (docType: string, file: File | null) => {
     setFiles((prev) => ({ ...prev, [docType]: file }));
@@ -51,7 +48,8 @@ export function InheritanceTransfer() {
     setError(null);
     setLoading(true);
     try {
-      if (!surveyNumber || !heirWallet) {
+      const linkedHeirWallet = heirWallet || address || user?.wallet_address || '';
+      if (!surveyNumber || !linkedHeirWallet) {
         throw new Error('Survey number and heir wallet are required');
       }
       const missing = REQUIRED_DOCS.filter((d) => !files[d]);
@@ -71,14 +69,14 @@ export function InheritanceTransfer() {
       const app = await api.applications.create({
         application_type: 'INHERITANCE_TRANSFER',
         survey_number: surveyNumber,
-        applicant_wallet: heirWallet,
+        applicant_wallet: linkedHeirWallet,
         applicant_name: heirName,
         applicant_email: user?.email,
         deceased_owner_name: deceasedName,
         deceased_owner_wallet: deceasedWallet || undefined,
         relationship,
         legal_heirs,
-        heir_wallet: heirWallet,
+        heir_wallet: linkedHeirWallet,
         party_details: {
           applicant_name: heirName,
           applicant_email: user?.email,
@@ -86,7 +84,7 @@ export function InheritanceTransfer() {
           deceased_owner_name: deceasedName,
           deceased_owner_wallet: deceasedWallet,
           legal_heirs,
-          buyer: { wallet_address: heirWallet, name: heirName },
+          buyer: { wallet_address: linkedHeirWallet, name: heirName },
         },
       });
 
@@ -98,8 +96,11 @@ export function InheritanceTransfer() {
       }
 
       navigate(`/applications/${appId}`);
-    } catch (err: any) {
-      setError(err?.response?.data?.message || err.message || 'Failed to submit inheritance application');
+    } catch (err: unknown) {
+      const message = isAxiosError<{ message?: string }>(err)
+        ? err.response?.data?.message || err.message
+        : err instanceof Error ? err.message : undefined;
+      setError(message || 'Failed to submit inheritance application');
     } finally {
       setLoading(false);
     }
@@ -152,7 +153,7 @@ export function InheritanceTransfer() {
               </div>
               <div className="space-y-2 sm:col-span-2">
                 <Label>Heir Wallet Address</Label>
-                <Input value={heirWallet} onChange={(e) => setHeirWallet(e.target.value)} required />
+                <Input value={heirWallet || address || user?.wallet_address || ''} onChange={(e) => setHeirWallet(e.target.value)} required />
               </div>
               <div className="space-y-2 sm:col-span-2">
                 <Label>All Legal Heirs (one per line: Name, Relationship)</Label>

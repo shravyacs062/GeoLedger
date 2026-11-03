@@ -18,11 +18,7 @@ DOCUMENT_REQUIREMENTS = {
         "FAMILY_TREE",
         "NOC_FROM_LEGAL_HEIRS",
         "MUTATION_CERTIFICATE",
-<<<<<<< Updated upstream
-        "EXISTING_OWNERSHIP_DOCUMENTS",
-=======
         "OWNERSHIP_PROOF",
->>>>>>> Stashed changes
         "NEW_OWNER_ID_PROOF",
     ],
 }

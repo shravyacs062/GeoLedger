@@ -10,10 +10,10 @@ export type WalletContextValue = {
   hasChecked: boolean;
   error: string | null;
   hasMetaMask: boolean;
-  isLocalNetwork: boolean;
+  isTargetNetwork: boolean;
   connect: () => Promise<string>;
   disconnect: () => Promise<void>;
-  switchToLocal: () => Promise<void>;
+  switchToTarget: () => Promise<void>;
 };
 
 export const WalletContext = createContext<WalletContextValue | undefined>(undefined);

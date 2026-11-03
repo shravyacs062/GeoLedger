@@ -1,6 +1,6 @@
 # Local setup
 
-You need the Flask API and the Vite frontend. A local Hardhat node is optional (simulation mode is used when the contract is not configured).
+You need the Flask API and the Vite frontend. MongoDB, MetaMask, and a local Hardhat node are optional for a local demo. The local demo uses SQLite if MongoDB is unavailable and blockchain simulation if no contract is configured.
 
 ## Prerequisites
 
@@ -22,7 +22,7 @@ Create `backend/.env` before starting the API:
 
 ```dotenv
 SECRET_KEY=replace-with-a-random-secret
-ADMIN_EMAIL=registrar@example.test
+ADMIN_EMAIL=admin@example.test
 ADMIN_PASSWORD=replace-with-a-unique-password-of-at-least-12-characters
 MONGO_URI=mongodb://localhost:27017
 DATABASE_NAME=geoledger
@@ -45,13 +45,6 @@ python app.py
 
 The API listens on `http://0.0.0.0:5000`. `GET /` should return `{ "success": true, "message": "GeoLedger backend is running" }`.
 
-On first boot the API seeds:
-
-| Role | Email | Password |
-|---|---|---|
-| Admin | `admin@geoledger.local` | `Admin@12345` |
-| User | `user@geoledger.local` | `User@12345` |
-
 ### Tests
 
 ```bash
@@ -60,7 +53,8 @@ source venv/bin/activate
 pytest tests/test_app.py
 ```
 
-Tests use JWT auth. Blockchain simulation mode is used when no contract address is configured.
+Tests use Flask session authentication. For local demos, the backend can use
+blockchain simulation mode when no contract address is configured.
 
 ## 2. Frontend (Vite)
 
@@ -72,7 +66,6 @@ npm run dev
 
 Open `http://localhost:5173`.
 
-<<<<<<< Updated upstream
 | Portal | URL |
 |---|---|
 | Landing | `/` |
@@ -80,7 +73,10 @@ Open `http://localhost:5173`.
 | Admin login | `/admin/login` |
 | Public verify | `/public/verify/SN-DEMO-001` |
 
-Optional: `frontend/.env` with `VITE_API_BASE_URL=http://127.0.0.1:5000`.
+By default, the frontend connects to the API on port `5000` using the same host
+(`localhost` or `127.0.0.1`) that you used to open the frontend. If you set
+`VITE_API_BASE_URL` in `frontend/.env`, keep its hostname consistent with the
+frontend hostname so the browser sends the session cookie.
 
 ### MetaMask (optional)
 
@@ -116,17 +112,12 @@ Address:     0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266
 ```
 
 Without a deployed contract, the backend uses **blockchain simulation mode** so approve flows still complete for demos and tests.
-=======
-### User and administrator accounts
 
 Register a user at `/login`; users can only access their own applications,
-properties and documents. Sign in as the provisioned registrar at `/admin/login`.
-Users link a wallet from **Profile** by connecting MetaMask and signing a one-time
-challenge; the private key never leaves the wallet.
-
-Use **Hardhat Localhost** (chain id `31337`, RPC `http://127.0.0.1:8545`) and import
-Hardhat account `#0` only for local development. Admin login does not use a wallet.
->>>>>>> Stashed changes
+properties and documents. Sign in as the provisioned administrator at
+`/admin/login`. Any signed-in account can link a wallet from **Profile** by connecting MetaMask and
+signing a one-time challenge; the private key never leaves the wallet. This is a
+message signature, not a blockchain transaction.
 
 ## Environment variables
 
@@ -134,48 +125,31 @@ Hardhat account `#0` only for local development. Admin login does not use a wall
 
 | Variable | Default | Purpose |
 |---|---|---|
+| `APP_ENV` | `development` | Use `production` to disable demo seeding, SQLite fallback, and blockchain simulation |
 | `DEBUG` | `False` | Include exception details in 500 responses when true |
-<<<<<<< Updated upstream
-| `SECRET_KEY` | long dev default | Flask + JWT signing key (change in production) |
-| `JWT_ALGORITHM` | `HS256` | JWT algorithm |
-| `JWT_EXPIRES_HOURS` | `24` | Token lifetime |
-| `FRONTEND_URL` | `http://127.0.0.1:5173` | Base URL embedded in property QR codes |
-| `MONGO_URI` | `mongodb://localhost:27017` | Mongo connection; SQLite on failure |
-=======
 | `SECRET_KEY` | _(required)_ | Flask session signing secret; no default secret is accepted by the server |
-| `ADMIN_EMAIL` | _(required for admin access)_ | Initial registrar email |
-| `ADMIN_PASSWORD` | _(required for admin access)_ | Initial registrar password (12+ characters) |
+| `ADMIN_EMAIL` | _(required for admin access)_ | Initial Admin email |
+| `ADMIN_PASSWORD` | _(required for admin access)_ | Initial Admin password (12+ characters) |
 | `FRONTEND_ORIGINS` | `http://127.0.0.1:5173,http://localhost:5173` | Allowed credentialed frontend origins, comma-separated |
-| `MONGO_URI` | `mongodb://localhost:27017` | Mongo connection. On failure the API uses SQLite |
->>>>>>> Stashed changes
+| `MONGO_URI` | `mongodb://localhost:27017` | Mongo connection. Development falls back to SQLite; production requires MongoDB |
+| `FRONTEND_URL` | `http://127.0.0.1:5173` | Base URL embedded in property QR codes |
 | `DATABASE_NAME` | `geoledger` | Mongo database name |
 | `UPLOAD_FOLDER` | `uploads` | Document storage directory |
 | `MAX_CONTENT_LENGTH` | `16777216` | Upload cap (16 MB) |
 | `BLOCKCHAIN_RPC_URL` | `http://127.0.0.1:8545` | EVM JSON-RPC |
-<<<<<<< Updated upstream
-| `BLOCKCHAIN_CONTRACT_ADDRESS` | _(empty → simulation)_ | Deployed `GeoLedger` address |
-| `BLOCKCHAIN_PRIVATE_KEY` | Hardhat `#0` key | Registrar key for chain writes |
-| `BLOCKCHAIN_SIMULATION` | unset | Force simulation when `true` |
-=======
-| `BLOCKCHAIN_CONTRACT_ADDRESS` | _(required for application approvals)_ | Deployed `GeoLedger` address |
-| `BLOCKCHAIN_PRIVATE_KEY` | _(required for application approvals)_ | Registrar key used by the backend |
+| `BLOCKCHAIN_CONTRACT_ADDRESS` | empty | Deployed `GeoLedger` address; empty enables simulation mode |
+| `BLOCKCHAIN_PRIVATE_KEY` | empty | Backend transaction signer; use a managed secret and funded deployment account |
 | `SESSION_COOKIE_SECURE` | `False` | Set true when serving the API over HTTPS |
->>>>>>> Stashed changes
 
 Example:
 
 ```
-<<<<<<< Updated upstream
-DEBUG=true
-SECRET_KEY=geoledger-dev-secret-key-change-in-production-32b
-JWT_EXPIRES_HOURS=24
-FRONTEND_URL=http://127.0.0.1:5173
-=======
 DEBUG=false
 SECRET_KEY=replace-with-output-from-secrets-token-hex
-ADMIN_EMAIL=registrar@example.test
+ADMIN_EMAIL=admin@example.test
 ADMIN_PASSWORD=replace-with-a-unique-password-of-at-least-12-characters
->>>>>>> Stashed changes
+FRONTEND_ORIGINS=http://127.0.0.1:5173,http://localhost:5173
+FRONTEND_URL=http://127.0.0.1:5173
 MONGO_URI=mongodb://localhost:27017
 DATABASE_NAME=geoledger
 UPLOAD_FOLDER=uploads
@@ -188,10 +162,31 @@ BLOCKCHAIN_PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `VITE_API_BASE_URL` | `http://127.0.0.1:5000` | Flask origin |
-| `VITE_CHAIN_ID` | `31337` | Network MetaMask should use |
-| `VITE_CHAIN_NAME` | `Hardhat Localhost` | Label when adding the chain |
-| `VITE_RPC_URL` | `http://127.0.0.1:8545` | RPC URL added to MetaMask |
+| `VITE_API_BASE_URL` | API port `5000` on the frontend's current host | Flask origin |
+| `VITE_CHAIN_ID` | `31337` | Target EVM network id |
+| `VITE_CHAIN_NAME` | `Hardhat Localhost` | Target network label shown to users and MetaMask |
+| `VITE_RPC_URL` | `http://127.0.0.1:8545` | Target RPC URL offered to MetaMask |
+
+Connecting a wallet does not change its network automatically. If it is on another
+network, GeoLedger shows the configured target and lets the user switch explicitly.
+
+## Production deployment boundary
+
+The repository is a project prototype, not a ready-made production deployment.
+`APP_ENV=production` requires a reachable MongoDB and a configured, reachable
+deployed contract with a valid backend signing key. It disables SQLite fallback,
+demo database seeding, and blockchain simulation and fails startup if production
+secrets, HTTPS session cookies, or HTTPS frontend origins are missing.
+
+Before deploying, also configure HTTPS, a strong unique `SECRET_KEY`, exact
+`FRONTEND_ORIGINS`, `SESSION_COOKIE_SECURE=true`, a managed MongoDB and durable
+document-upload storage, and a real chain/RPC/contract. Keep the frontend and API on
+the same site (for example, sibling subdomains) so the session cookie works with the
+configured `SameSite=Lax` policy. The bundled GIS data remains
+sample/synthetic and is not an authoritative cadastral source; integrate and verify
+an authorized GIS provider before using real land records. Set frontend `VITE_*`
+network variables to the same chain as the backend contract. Do not use Hardhat
+keys or local RPC endpoints in a public deployment.
 
 ## Allowed upload types
 
@@ -201,26 +196,19 @@ BLOCKCHAIN_PRIVATE_KEY=0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7
 
 | Symptom | Likely cause |
 |---|---|
-<<<<<<< Updated upstream
-| `401 Authentication required` | Missing/expired JWT; log in again |
-| `403 Insufficient permissions` | User token used on an admin route |
-| Chain approve works without Hardhat | Simulation mode (expected without contract address) |
-| Empty map / GIS `"generated"` | Survey not in `demo_parcels.json`; synthetic parcel returned |
-| Frontend empty while API has data | `VITE_API_BASE_URL` mismatch |
-| Mongo ignored, `geoledger.db` created | Mongo ping failed; SQLite fallback is working |
-
-## Next steps
-
-- [Demo guide](./demo-guide.md)
-- [Feature docs](./features/README.md)
-- [API reference](./api.md)
-=======
+| `401 Authentication required` | No active session; sign in again |
+| `403 Insufficient permissions` | Signed-in account does not have the required role |
 | `Unable to connect to blockchain` (503) | Hardhat node is not running, or `BLOCKCHAIN_RPC_URL` is wrong |
-| `Blockchain contract address is not configured` (500) | Missing `BLOCKCHAIN_CONTRACT_ADDRESS` |
+| `Blockchain contract address is not configured` (500) | Chain writes require a deployed contract address |
 | `GeoLedger contract artifact not found` (500) | Deploy (or copy ABI) so `backend/blockchain/GeoLedger.json` exists |
 | Empty map / GIS 200 with `"status": "generated"` | Survey number is not in `demo_parcels.json`; a synthetic parcel was returned |
 | Frontend lists empty while the API has data | `VITE_API_BASE_URL` does not match the Flask host/port |
 | Mongo ignored, `geoledger.db` created | Mongo ping failed; SQLite fallback is working as designed |
 | Admin login unavailable | Set `ADMIN_EMAIL` and `ADMIN_PASSWORD`, then restart the backend |
 | Session disappears between frontend/API requests | Keep frontend and API on the configured origins; HTTPS deployments must set `SESSION_COOKIE_SECURE=true` |
->>>>>>> Stashed changes
+
+## Next steps
+
+- [Demo guide](./demo-guide.md)
+- [Feature docs](./features/README.md)
+- [API reference](./api.md)

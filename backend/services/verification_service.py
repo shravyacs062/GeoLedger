@@ -53,7 +53,7 @@ class VerificationService:
             raise APIError("File integrity check failed; document was rejected", status_code=409)
 
         if status == "VERIFIED" and not remarks:
-            remarks = "Reviewed and approved by an authorized registrar"
+            remarks = "Reviewed and approved by an authorized Admin"
         now = datetime.utcnow().isoformat()
         self.documents.update_one(
             {"_id": document_id},
@@ -107,17 +107,16 @@ class VerificationService:
 
         calc_hash = self._hash_file(file_path)
         hash_matches = calc_hash == stored_hash
-<<<<<<< Updated upstream
-        # Integrity-only auto check: mismatch → failed; match keeps pending for manual authenticity review
         if hash_matches:
-            status = doc.get("verification_status") if doc.get("verification_status") in ("VERIFIED", "REQUIRES_MANUAL_REVIEW") else "PENDING"
-            notes = "SHA-256 integrity check passed (authenticity still requires manual or authority review)"
+            status = (
+                "VERIFIED"
+                if doc.get("verification_status") == "VERIFIED"
+                else "REQUIRES_MANUAL_REVIEW"
+            )
+            notes = "File integrity passed; authenticity requires Admin review"
         else:
             status = "REJECTED"
             notes = "Hash mismatch detected — file may have been tampered with"
-=======
-        status = "REQUIRES_MANUAL_REVIEW" if hash_matches else "REJECTED"
->>>>>>> Stashed changes
 
         now = datetime.utcnow().isoformat()
         self.documents.update_one(
@@ -125,14 +124,9 @@ class VerificationService:
             {
                 "$set": {
                     "verification_status": status,
-<<<<<<< Updated upstream
                     "verification_notes": notes,
-                    "verified_at": now if status == "VERIFIED" else doc.get("verified_at"),
                     "integrity_checked_at": now,
-=======
-                    "verification_notes": "File integrity passed; authenticity requires registrar review" if hash_matches else "Hash mismatch detected",
-                    "verified_at": now,
->>>>>>> Stashed changes
+                    **({"verified_at": now} if status == "REJECTED" else {}),
                 }
             },
         )

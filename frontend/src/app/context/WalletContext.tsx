@@ -7,7 +7,7 @@ import {
 } from 'react';
 
 import {
-  LOCAL_CHAIN_ID,
+  TARGET_CHAIN_ID,
   chainLabel,
   formatWalletError,
   getAccounts,
@@ -17,7 +17,7 @@ import {
   isMetaMaskInstalled,
   requestAccounts,
   revokeWalletPermissions,
-  switchToLocalNetwork,
+  switchToTargetNetwork,
   walletSession,
 } from '../../services/wallet';
 import { WalletContext, type WalletContextValue } from './wallet-context';
@@ -52,11 +52,6 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     setError(null);
     try {
       const nextAddress = await requestAccounts();
-      try {
-        await switchToLocalNetwork();
-      } catch (networkError) {
-        console.warn('Could not switch MetaMask to Hardhat Localhost', networkError);
-      }
       await refresh(nextAddress);
       walletSession.markConnected();
       return nextAddress;
@@ -79,10 +74,10 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     setError(null);
   }, []);
 
-  const switchToLocal = useCallback(async () => {
+  const switchToTarget = useCallback(async () => {
     setError(null);
     try {
-      await switchToLocalNetwork();
+      await switchToTargetNetwork();
       if (address) {
         await refresh(address);
       } else {
@@ -91,7 +86,6 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       const message = formatWalletError(err);
       setError(message);
-      throw new Error(message, { cause: err });
     }
   }, [address, refresh]);
 
@@ -170,10 +164,10 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       hasChecked,
       error,
       hasMetaMask,
-      isLocalNetwork: chainId === LOCAL_CHAIN_ID,
+      isTargetNetwork: chainId === TARGET_CHAIN_ID,
       connect,
       disconnect,
-      switchToLocal,
+      switchToTarget,
     }),
     [
       address,
@@ -185,7 +179,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       hasChecked,
       hasMetaMask,
       isConnecting,
-      switchToLocal,
+      switchToTarget,
     ],
   );
 

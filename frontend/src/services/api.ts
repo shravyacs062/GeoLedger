@@ -1,314 +1,279 @@
 import axios from 'axios';
 
-const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:5000';
+export type Property = {
+  id?: string;
+  _id?: string;
+  property_id?: string;
+  survey_number?: string;
+  owner_wallet?: string | null;
+  village?: string;
+  taluk?: string;
+  district?: string;
+  area?: number | string | null;
+  land_type?: string;
+  status?: string;
+  coordinates?: unknown;
+};
+
+export type GISLookup = {
+  geojson?: GeoJSON.GeoJsonObject;
+  found?: boolean;
+  status?: string;
+  data_source?: string;
+  disclaimer?: string;
+};
+
+const DEFAULT_API_URL = `${window.location.protocol}//${window.location.hostname}:5000`;
+const BASE_URL = import.meta.env.VITE_API_BASE_URL || DEFAULT_API_URL;
 
 const client = axios.create({
   baseURL: BASE_URL,
   withCredentials: true,
-  headers: {
-    'Content-Type': 'application/json',
-  },
-});
-
-let authToken: string | null = null;
-
-export function setAuthToken(token: string | null) {
-  authToken = token;
-  if (token) {
-    client.defaults.headers.common.Authorization = `Bearer ${token}`;
-  } else {
-    delete client.defaults.headers.common.Authorization;
-  }
-}
-
-client.interceptors.request.use((config) => {
-  if (authToken) {
-    config.headers = config.headers || {};
-    config.headers.Authorization = `Bearer ${authToken}`;
-  }
-  return config;
+  headers: { 'Content-Type': 'application/json' },
 });
 
 export const api = {
   auth: {
-    register: async (data: { name: string; email: string; password: string; wallet_address?: string }) => {
-      const res = await client.post('/auth/register', data);
-      return res.data?.data;
+    register: async (data: { name: string; email: string; password: string }) => {
+      const response = await client.post('/auth/register', data);
+      return response.data?.data;
     },
     login: async (email: string, password: string, role: 'user' | 'admin') => {
-      const res = await client.post('/auth/login', { email, password, role });
-      return res.data?.data;
+      const response = await client.post('/auth/login', { email, password, role });
+      return response.data?.data;
     },
     me: async () => {
-      const res = await client.get('/auth/me');
-      return res.data?.data;
+      const response = await client.get('/auth/me');
+      return response.data?.data;
     },
     logout: async () => {
-      const res = await client.post('/auth/logout');
-      return res.data;
+      const response = await client.post('/auth/logout');
+      return response.data;
     },
     walletChallenge: async (wallet_address: string) => {
-      const res = await client.post('/auth/wallet-challenge', { wallet_address });
-      return res.data?.data as { message: string };
+      const response = await client.post('/auth/wallet-challenge', { wallet_address });
+      return response.data?.data as { message: string };
     },
     updateProfile: async (data: { name?: string; wallet_address?: string; signature?: string }) => {
-      const res = await client.patch('/auth/profile', data);
-      return res.data?.data;
-    },
-    registerAccount: async (data: {
-      email: string;
-      password: string;
-      full_name?: string;
-      phone?: string;
-      wallet_address?: string;
-    }) => {
-      const res = await client.post('/auth/register', data);
-      return res.data?.data;
-    },
-    login: async (email: string, password: string) => {
-      const res = await client.post('/auth/login', { email, password });
-      return res.data?.data;
-    },
-    adminLogin: async (email: string, password: string) => {
-      const res = await client.post('/auth/admin/login', { email, password });
-      return res.data?.data;
-    },
-    me: async () => {
-      const res = await client.get('/auth/me');
-      return res.data?.data;
-    },
-    updateProfile: async (data: Record<string, unknown>) => {
-      const res = await client.put('/auth/profile', data);
-      return res.data?.data;
-    },
-    logout: async () => {
-      const res = await client.post('/auth/logout');
-      return res.data;
+      const response = await client.patch('/auth/profile', data);
+      return response.data?.data;
     },
     listUsers: async () => {
-      const res = await client.get('/auth/users');
-      return res.data?.data || [];
+      const response = await client.get('/auth/users');
+      return response.data?.data || [];
     },
     setRole: async (userId: string, role: string) => {
-      const res = await client.put(`/auth/users/${userId}/role`, { role });
-      return res.data?.data;
+      const response = await client.put(`/auth/users/${encodeURIComponent(userId)}/role`, { role });
+      return response.data?.data;
     },
   },
 
   dashboard: {
     admin: async () => {
-      const res = await client.get('/dashboard/admin');
-      return res.data?.data;
+      const response = await client.get('/dashboard/admin');
+      return response.data?.data;
     },
     user: async () => {
-      const res = await client.get('/dashboard/user');
-      return res.data?.data;
+      const response = await client.get('/dashboard/user');
+      return response.data?.data;
     },
   },
 
   notifications: {
     list: async () => {
-      const res = await client.get('/notifications');
-      return res.data?.data || [];
+      const response = await client.get('/notifications');
+      return response.data?.data || [];
     },
     markRead: async (id: string) => {
-      const res = await client.post(`/notifications/${id}/read`);
-      return res.data?.data;
+      const response = await client.post(`/notifications/${encodeURIComponent(id)}/read`);
+      return response.data?.data;
     },
     markAllRead: async () => {
-      const res = await client.post('/notifications/read-all');
-      return res.data?.data;
+      const response = await client.post('/notifications/read-all');
+      return response.data?.data;
     },
   },
 
   valuation: {
     estimate: async (data: Record<string, unknown>) => {
-      const res = await client.post('/valuation/estimate', data);
-      return res.data?.data;
+      const response = await client.post('/valuation/estimate', data);
+      return response.data?.data;
     },
     getParams: async () => {
-      const res = await client.get('/valuation/params');
-      return res.data?.data;
+      const response = await client.get('/valuation/params');
+      return response.data?.data;
     },
     updateParams: async (data: Record<string, unknown>) => {
-      const res = await client.put('/valuation/params', data);
-      return res.data?.data;
+      const response = await client.put('/valuation/params', data);
+      return response.data?.data;
     },
   },
 
   qr: {
     get: async (identifier: string) => {
-      const res = await client.get(`/qr/property/${identifier}`);
-      return res.data?.data;
+      const response = await client.get(`/qr/property/${encodeURIComponent(identifier)}`);
+      return response.data?.data;
     },
     generate: async (data: { survey_number?: string; property_id?: string }) => {
-      const res = await client.post('/qr/generate', data);
-      return res.data?.data;
+      const response = await client.post('/qr/generate', data);
+      return response.data?.data;
     },
   },
 
   properties: {
-    list: async () => {
-      const res = await client.get('/properties');
-      return res.data?.data || [];
+    list: async (): Promise<Property[]> => {
+      const response = await client.get('/properties');
+      return (response.data?.data || []) as Property[];
     },
     getBySurvey: async (surveyNumber: string) => {
-      const res = await client.get(`/properties/${encodeURIComponent(surveyNumber)}`);
-      return res.data?.data;
+      const response = await client.get(`/properties/${encodeURIComponent(surveyNumber)}`);
+      return response.data?.data;
     },
     create: async (data: Record<string, unknown>) => {
-      const res = await client.post('/properties', data);
-      return res.data?.data;
+      const response = await client.post('/properties', data);
+      return response.data?.data;
     },
   },
 
   applications: {
-<<<<<<< Updated upstream
     list: async (status?: string, applicantWallet?: string, applicationType?: string) => {
-      const params: any = {};
-=======
-    list: async (status?: string, applicantWallet?: string) => {
       const params: Record<string, string> = {};
->>>>>>> Stashed changes
       if (status) params.status = status;
       if (applicantWallet) params.applicant_wallet = applicantWallet;
       if (applicationType) params.application_type = applicationType;
-      const res = await client.get('/applications', { params });
-      return res.data?.data || [];
+      const response = await client.get('/applications', { params });
+      return response.data?.data || [];
     },
     get: async (id: string) => {
-      const res = await client.get(`/applications/${id}`);
-      return res.data?.data;
+      const response = await client.get(`/applications/${encodeURIComponent(id)}`);
+      return response.data?.data;
     },
     create: async (data: Record<string, unknown>) => {
-      const res = await client.post('/applications', data);
-      return res.data?.data;
+      const response = await client.post('/applications', data);
+      return response.data?.data;
     },
-    updateStatus: async (id: string, data: { status: string; rejection_reason?: string; verification_summary?: Record<string, unknown> }) => {
-      const res = await client.put(`/applications/${id}/status`, data);
-      return res.data?.data;
+    updateStatus: async (
+      id: string,
+      data: { status: string; rejection_reason?: string; verification_summary?: Record<string, unknown> },
+    ) => {
+      const response = await client.put(`/applications/${encodeURIComponent(id)}/status`, data);
+      return response.data?.data;
     },
     approve: async (id: string) => {
-      const res = await client.post(`/applications/${id}/approve`);
-      return res.data?.data;
+      const response = await client.post(`/applications/${encodeURIComponent(id)}/approve`);
+      return response.data?.data;
     },
     reject: async (id: string, rejection_reason: string) => {
-      const res = await client.post(`/applications/${id}/reject`, { rejection_reason });
-      return res.data?.data;
+      const response = await client.post(`/applications/${encodeURIComponent(id)}/reject`, { rejection_reason });
+      return response.data?.data;
     },
     requestDocuments: async (id: string, remarks: string, required_documents?: string[]) => {
-      const res = await client.post(`/applications/${id}/request-documents`, {
+      const response = await client.post(`/applications/${encodeURIComponent(id)}/request-documents`, {
         remarks,
         required_documents,
       });
-      return res.data?.data;
+      return response.data?.data;
     },
   },
 
   documents: {
     upload: async (formDataOrAppId: FormData | string, maybeFile?: File, docType?: string) => {
-      let data: FormData;
-      if (formDataOrAppId instanceof FormData) {
-        data = formDataOrAppId;
-      } else {
-        data = new FormData();
+      const data = formDataOrAppId instanceof FormData ? formDataOrAppId : new FormData();
+      if (!(formDataOrAppId instanceof FormData)) {
         data.append('application_id', formDataOrAppId);
         if (maybeFile) data.append('file', maybeFile);
         if (docType) data.append('document_type', docType);
       }
-      const res = await client.post('/documents/upload', data, {
+      const response = await client.post('/documents/upload', data, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
-      return res.data?.data;
+      return response.data?.data;
     },
     getByApp: async (applicationId: string) => {
-      const res = await client.get(`/documents/application/${applicationId}`);
-      return res.data?.data || [];
+      const response = await client.get(`/documents/application/${encodeURIComponent(applicationId)}`);
+      return response.data?.data || [];
     },
     getByProperty: async (propertyId: string) => {
-      const res = await client.get(`/documents/property/${propertyId}`);
-      return res.data?.data || [];
+      const response = await client.get(`/documents/property/${encodeURIComponent(propertyId)}`);
+      return response.data?.data || [];
     },
     list: async () => {
-      const res = await client.get('/documents');
-      return res.data?.data || [];
+      const response = await client.get('/documents');
+      return response.data?.data || [];
     },
     delete: async (documentId: string) => {
-      const res = await client.delete(`/documents/${documentId}`);
-      return res.data;
+      const response = await client.delete(`/documents/${encodeURIComponent(documentId)}`);
+      return response.data;
     },
-    getDownloadUrl: (documentId: string) => {
-      return `${BASE_URL}/documents/download/${documentId}`;
-    },
+    getDownloadUrl: (documentId: string) =>
+      `${BASE_URL}/documents/download/${encodeURIComponent(documentId)}`,
   },
 
   verification: {
     verify: async (documentId: string) => {
-      const res = await client.post(`/verification/document/${documentId}`);
-      return res.data?.data;
+      const response = await client.post(`/verification/document/${encodeURIComponent(documentId)}`);
+      return response.data?.data;
     },
     review: async (documentId: string, status: string, remarks?: string) => {
-      const res = await client.post(`/verification/document/${documentId}/review`, { status, remarks });
-      return res.data?.data;
+      const response = await client.post(
+        `/verification/document/${encodeURIComponent(documentId)}/review`,
+        { status, remarks },
+      );
+      return response.data?.data;
     },
   },
 
   ownership: {
     submitTransfer: async (data: Record<string, unknown>) => {
-      const res = await client.post('/ownership/transfer', data);
-      return res.data?.data;
+      const response = await client.post('/ownership/transfer', data);
+      return response.data?.data;
     },
     transfer: async (data: Record<string, unknown>) => {
-      const res = await client.post('/ownership/transfer', data);
-      return res.data?.data;
+      const response = await client.post('/ownership/transfer', data);
+      return response.data?.data;
     },
     getHistory: async (propertyId: string) => {
-      const res = await client.get(`/ownership/history/${propertyId}`);
-      return res.data?.data || [];
+      const response = await client.get(`/ownership/history/${encodeURIComponent(propertyId)}`);
+      return response.data?.data || [];
     },
   },
 
   gis: {
-    getBySurvey: async (surveyNumber: string) => {
-      const res = await client.get(`/gis/property/${surveyNumber}`);
-      return res.data?.data;
+    getBySurvey: async (surveyNumber: string): Promise<GISLookup> => {
+      const response = await client.get(`/gis/property/${encodeURIComponent(surveyNumber)}`);
+      return response.data?.data as GISLookup;
     },
   },
 
   blockchain: {
     getProperty: async (id: string) => {
-      const res = await client.get(`/blockchain/property/${id}`);
-      return res.data?.data;
+      const response = await client.get(`/blockchain/property/${encodeURIComponent(id)}`);
+      return response.data?.data;
     },
     register: async (propertyId: string, walletAddress: string) => {
-      const res = await client.post('/blockchain/register', { property_id: propertyId, wallet_address: walletAddress });
-      return res.data?.data;
+      const response = await client.post('/blockchain/register', {
+        property_id: propertyId,
+        wallet_address: walletAddress,
+      });
+      return response.data?.data;
     },
     transfer: async (propertyId: string, newOwner: string) => {
-      const res = await client.post('/blockchain/transfer', { property_id: propertyId, new_owner: newOwner });
-      return res.data?.data;
+      const response = await client.post('/blockchain/transfer', {
+        property_id: propertyId,
+        new_owner: newOwner,
+      });
+      return response.data?.data;
     },
     getTransactions: async () => {
-      const res = await client.get('/blockchain/transactions');
-      return res.data?.data || [];
+      const response = await client.get('/blockchain/transactions');
+      return response.data?.data || [];
     },
   },
 
   publicVerify: {
     verifyProperty: async (identifier: string) => {
-      const res = await client.get(`/verify/property/${encodeURIComponent(identifier)}`);
-      return res.data?.data;
-    },
-  },
-
-  notifications: {
-    list: async () => {
-      const res = await client.get('/notifications');
-      return res.data?.data || [];
-    },
-    markRead: async (id: string) => {
-      const res = await client.put(`/notifications/${id}/read`);
-      return res.data?.data;
+      const response = await client.get(`/verify/property/${encodeURIComponent(identifier)}`);
+      return response.data?.data;
     },
   },
 };

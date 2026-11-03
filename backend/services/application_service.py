@@ -1,9 +1,6 @@
 from datetime import datetime
-<<<<<<< Updated upstream
-=======
 import uuid
 from bson import ObjectId
->>>>>>> Stashed changes
 
 from database.client import get_database
 from services.blockchain_service import BlockchainService
@@ -162,30 +159,16 @@ class ApplicationService:
             "application_type": application_type,
             "applicant_wallet": applicant_wallet,
             "applicant_user_id": data.get("applicant_user_id"),
-<<<<<<< Updated upstream
-=======
             "applicant_email": data.get("applicant_email"),
->>>>>>> Stashed changes
             "survey_number": survey_number,
             "property_id": property_id,
             "status": "SUBMITTED",
             "required_documents": required_documents,
             "submitted_documents": [],
-<<<<<<< Updated upstream
             "party_details": party_details,
             "property_details": property_details,
             "admin_remarks": None,
             "correction_requested": False,
-=======
-            "party_details": party_details or {
-                "applicant_name": data.get("applicant_name", "Applicant"),
-                "applicant_email": data.get("applicant_email", ""),
-                "applicant_phone": data.get("applicant_phone", ""),
-                "buyer_wallet": data.get("buyer_wallet", ""),
-                "seller_wallet": data.get("seller_wallet", applicant_wallet),
-            },
-            "property_details": data.get("property_details") or {},
->>>>>>> Stashed changes
             "government_reference": f"GOV-REQ-{survey_number}",
             "rejection_reason": None,
             "verification_summary": None,
@@ -198,8 +181,6 @@ class ApplicationService:
 
         result = self.collection.insert_one(application_doc)
         application_doc["_id"] = result.inserted_id
-<<<<<<< Updated upstream
-
         create_notification(
             recipient_id=data.get("applicant_user_id"),
             recipient_wallet=applicant_wallet,
@@ -219,23 +200,6 @@ class ApplicationService:
             "application_type": application_type,
             "survey_number": survey_number,
         })
-
-=======
-        from services.notification_service import NotificationService
-        notifications = NotificationService()
-        notifications.create(
-            "Application submitted",
-            f"Your {application_type.replace('_', ' ').lower()} application for survey {survey_number} was submitted.",
-            user_id=application_doc.get("applicant_user_id"),
-            application_id=str(result.inserted_id),
-        )
-        notifications.create(
-            "New application submitted",
-            f"{application_type.replace('_', ' ')} application for survey {survey_number} requires review.",
-            role="admin",
-            application_id=str(result.inserted_id),
-        )
->>>>>>> Stashed changes
         return self._serialize_application(application_doc)
 
     # ---------------------------------------------------------
@@ -428,16 +392,12 @@ class ApplicationService:
 
         # Execute Blockchain Transaction
         try:
-<<<<<<< Updated upstream
             if app_type in (
                 "OWNERSHIP_TRANSFER",
                 "TRANSFER",
                 "INHERITANCE_TRANSFER",
                 "INHERITANCE",
             ):
-=======
-            if app_type in ("OWNERSHIP_TRANSFER", "TRANSFER", "INHERITANCE_TRANSFER"):
->>>>>>> Stashed changes
                 party_details = application.get("party_details") or {}
                 buyer = party_details.get("buyer") or {}
                 new_owner = (
@@ -587,15 +547,6 @@ class ApplicationService:
                 {"$set": update_data},
             )
 
-<<<<<<< Updated upstream
-            # Generate QR for newly registered properties
-            if app_type in ("NEW_REGISTRATION", "REGISTRATION"):
-                try:
-                    from services.qr_service import QRService
-                    QRService().generate_for_property(survey_number=survey_number)
-                except Exception:
-                    pass
-
             create_notification(
                 recipient_id=application.get("applicant_user_id"),
                 recipient_wallet=application.get("applicant_wallet"),
@@ -611,28 +562,6 @@ class ApplicationService:
             })
 
             return self.get_application(application_id)
-=======
-            completed = self.get_application(application_id)
-            from services.notification_service import NotificationService
-            NotificationService().create(
-                "Application approved",
-                f"Your application for survey {survey_number} has been approved and recorded on-chain.",
-                user_id=completed.get("applicant_user_id"),
-                application_id=application_id,
-            )
-            if app_type in ("OWNERSHIP_TRANSFER", "TRANSFER", "INHERITANCE_TRANSFER"):
-                buyer_wallet = (((application.get("party_details") or {}).get("buyer") or {}).get("wallet_address"))
-                if buyer_wallet:
-                    buyer_user = self.db.users.find_one({"wallet_address": buyer_wallet})
-                    if buyer_user:
-                        NotificationService().create(
-                            "Ownership transferred",
-                            f"Ownership of survey {survey_number} was transferred to your wallet.",
-                            user_id=str(buyer_user.get("_id")),
-                            application_id=application_id,
-                        )
-            return completed
->>>>>>> Stashed changes
 
         except Exception as exc:
             self.collection.update_one(
@@ -737,8 +666,18 @@ class ApplicationService:
     def _serialize_application(self, application: dict) -> dict:
         if not application:
             return None
-        app = dict(application)
+        app = self._serialize_mongo_values(application)
         app["_id"] = str(app.get("_id", ""))
         app["id"] = app["_id"]
         app["application_id"] = app["_id"]
         return app
+
+    @classmethod
+    def _serialize_mongo_values(cls, value):
+        if isinstance(value, ObjectId):
+            return str(value)
+        if isinstance(value, dict):
+            return {key: cls._serialize_mongo_values(item) for key, item in value.items()}
+        if isinstance(value, list):
+            return [cls._serialize_mongo_values(item) for item in value]
+        return value

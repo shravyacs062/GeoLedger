@@ -22,15 +22,11 @@ Errors:
 }
 ```
 
-## Authentication header
+## Authentication
 
-Protected routes require:
-
-```
-Authorization: Bearer <jwt>
-```
-
-Public (no auth): `GET /`, `GET /gis/property/<survey>`, `GET /verify/property/<id>`.
+Protected routes require an active HTTP-only Flask session cookie. Browser clients
+must send requests with credentials enabled. Public routes do not require a session:
+`GET /`, `GET /gis/property/<survey>`, and `GET /verify/property/<id>`.
 
 ---
 
@@ -44,57 +40,6 @@ Message: `"GeoLedger backend is running"`.
 
 ## Auth
 
-<<<<<<< Updated upstream
-### `POST /auth/register`
-
-**Password registration**
-
-| Field | Required |
-|---|---|
-| `email` | yes |
-| `password` | yes (min 8) |
-| `full_name`, `phone`, `wallet_address` | no |
-
-**201** `{ user, token }`. Role is always `USER`.
-
-**Wallet-only (legacy)** — body with only `wallet_address` registers/links a wallet user.
-
-### `POST /auth/login`
-
-Citizen portal. Body: `{ email, password }`.  
-**200** `{ user, token }` for role `USER`. **403** if account is admin/registrar.
-
-### `POST /auth/admin/login`
-
-Admin portal. Same body.  
-**200** for `ADMIN` / `REGISTRAR`. **403** for citizen accounts.
-
-### `GET /auth/me` — login required
-
-### `PUT /auth/profile` — login required
-
-Updatable: `full_name`, `phone`, `wallet_address`.
-
-### `POST /auth/logout` — login required
-
-### `GET /auth/users` — admin
-
-### `PUT /auth/users/<user_id>/role` — admin
-
-Body: `{ "role": "USER" | "ADMIN" | "REGISTRAR" }`.
-
----
-
-## Dashboard
-
-### `GET /dashboard/admin` — admin
-
-Pending counts, flagged docs, recent transactions, user count.
-
-### `GET /dashboard/user` — login required
-
-Properties and applications for the current user/wallet.
-=======
 Authentication uses an HTTP-only, same-site Flask session cookie. Frontend API
 requests must include credentials. `user` and `admin` roles are enforced by the
 backend; registering with a role field never grants administrator access.
@@ -120,13 +65,29 @@ Return the current account, end its session, or update the user's name. Administ
 are provisioned using `ADMIN_EMAIL` and `ADMIN_PASSWORD`; no public admin registration
 exists.
 
+### `GET /auth/users` · `PUT /auth/users/<user_id>/role` — admin
+
+List accounts or change a user's role. The only supported roles are `user` and
+`admin`.
+
 ### Wallet ownership proof
 
 1. `POST /auth/wallet-challenge` with `wallet_address` returns a one-time message.
 2. `PATCH /auth/profile` with `wallet_address` and the wallet's `personal_sign`
    `signature` verifies and links the address. Merely knowing an address is not proof
    of control.
->>>>>>> Stashed changes
+
+---
+
+## Dashboard
+
+### `GET /dashboard/admin` — admin
+
+Pending counts, flagged docs, recent transactions, user count.
+
+### `GET /dashboard/user` — login required
+
+Properties and applications for the current user/wallet.
 
 ---
 
@@ -159,13 +120,9 @@ Prefix: `/applications`.
 | `applicant_wallet` / `wallet_address` | yes (or taken from JWT wallet) |
 | party / inheritance fields | see workflows |
 
-<<<<<<< Updated upstream
-Aliases: `REGISTRATION`→`NEW_REGISTRATION`, `TRANSFER`→`OWNERSHIP_TRANSFER`, `INHERITANCE`→`INHERITANCE_TRANSFER`.
-=======
 Requires a user session and a wallet linked by signature. A conflicting active
 application for the survey, an already-registered survey for a new registration, or
 a non-owner transfer request is rejected.
->>>>>>> Stashed changes
 
 **409** active duplicate survey+type. Transfer/inheritance require an existing property.
 
@@ -294,9 +251,6 @@ Prefer application approve for workflow-gated chain writes.
 
 ### `GET /verify/property/<identifier>` — public
 
-<<<<<<< Updated upstream
-Cadastral fields, owner wallets, document hashes, blockchain match when available. No private file contents.
-=======
 Public, unauthenticated, read-only record lookup by `survey_number`, `property_id`, or `_id`. Returns cadastral fields, document integrity hashes and review statuses, and `blockchain_tx_hash`; it does not return owner wallet addresses or private document contents.
 
 `blockchain_verified` is true only when the property is found on the configured chain.
@@ -309,4 +263,3 @@ The frontend's unauthenticated QR destination is
 `/verify/property/<survey_number>`.
 
 **404** if the parcel is not in the registry.
->>>>>>> Stashed changes

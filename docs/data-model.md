@@ -12,7 +12,7 @@ Ids are strings. Mongo uses ObjectId hex; SQLite uses generated string ids. Seri
 |---|---|
 | `email` | Unique for password accounts |
 | `password_hash` | Werkzeug hash (null for wallet-only legacy rows) |
-| `role` | `USER` \| `ADMIN` \| `REGISTRAR` |
+| `role` | `USER` \| `ADMIN` |
 | `full_name`, `phone` | Profile fields |
 | `wallet_address` | Optional linked MetaMask address |
 | `is_active` | Soft disable |
@@ -90,7 +90,7 @@ Seeded demo: `SN-DEMO-001` / `GL-PROP-001` in Thandavapura, Nanjangud, Mysuru, K
 | `property_id`, `survey_number`, `application_id` | |
 | `transaction_type` | `REGISTRATION`, `OWNERSHIP_TRANSFER`, or `INHERITANCE_TRANSFER` |
 | `previous_owner`, `new_owner` | Wallets or `GOVERNMENT_AUTHORITY` |
-| `from_address`, `to_address` | Registrar and new owner |
+| `from_address`, `to_address` | Admin and new owner |
 | `tx_hash`, `block_number` | |
 | `status` | `CONFIRMED` |
 | `timestamp` | |

@@ -35,12 +35,12 @@ There is **no** `onlyRegistrar` check. Any caller who can send a transaction (in
 ### `transferOwnership(string propertyId, address newOwner)`
 
 - Parcel must exist
-- Caller must be the current `owner` **or** `registrar`
+- Caller must be the current `owner` **or** the Admin authority stored in `registrar`
 - `newOwner` must not be the zero address
 
 Updates `owner` and emits `OwnershipTransferred`.
 
-The Flask approve path always uses the registrar key, so transfers succeed even when the applicant never signs.
+The Flask approve path always uses the Admin key, so transfers succeed even when the applicant never signs.
 
 ### `getProperty(string propertyId) view`
 

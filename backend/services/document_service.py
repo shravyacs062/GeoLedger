@@ -58,17 +58,6 @@ class DocumentService:
         if duplicate:
             raise APIError("This document has already been submitted", status_code=409)
 
-        # Duplicate document detection by hash
-        duplicate = self.collection.find_one({"document_hash": document_hash})
-        duplicate_warning = None
-        if duplicate:
-            duplicate_warning = {
-                "name": "DUPLICATE_DOCUMENT",
-                "passed": False,
-                "severity": "MEDIUM",
-                "message": f"Identical file previously uploaded as document {duplicate.get('_id')}",
-            }
-
         unique_id = uuid.uuid4().hex[:12]
         timestamp = datetime.utcnow().strftime("%Y%m%d%H%M%S")
         stored_filename = f"{timestamp}_{unique_id}_{orig_filename}"
@@ -116,9 +105,6 @@ class DocumentService:
             },
             *cross_checks,
         ]
-        if duplicate_warning:
-            verification_checks.append(duplicate_warning)
-
         high_severity_fail = any(
             (not c.get("passed")) and c.get("severity") in ("HIGH", "CRITICAL")
             for c in verification_checks
@@ -147,7 +133,6 @@ class DocumentService:
             "storage_location": file_path,
             "file_size": len(file_bytes),
             "document_hash": document_hash,
-<<<<<<< Updated upstream
             "verification_status": initial_status,
             "verification_score": 100 if not high_severity_fail else 40,
             "verification_checks": verification_checks,
@@ -161,17 +146,6 @@ class DocumentService:
             "document_number": extracted.get("document_number"),
             "issuing_authority": extracted.get("issuing_authority"),
             "issue_date": extracted.get("issue_date"),
-=======
-            "verification_status": "PENDING",
-            "verification_checks": [
-                {
-                    "name": "FILE_INTEGRITY",
-                    "passed": True,
-                    "severity": "LOW",
-                    "message": "SHA-256 baseline recorded; authenticity review is still required",
-                }
-            ],
->>>>>>> Stashed changes
             "verification_notes": None,
             "uploaded_at": now,
             "verified_at": None,

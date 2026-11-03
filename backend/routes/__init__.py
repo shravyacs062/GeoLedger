@@ -10,13 +10,9 @@ from .applications import applications_bp
 from .verification import verification_bp
 from .public_verify import public_verify_bp
 from .notifications import notifications_bp
-<<<<<<< Updated upstream
 from .dashboard import dashboard_bp
 from .valuation import valuation_bp
 from .qr import qr_bp
-
-=======
->>>>>>> Stashed changes
 
 def register_blueprints(app: Flask) -> None:
 
@@ -29,11 +25,7 @@ def register_blueprints(app: Flask) -> None:
     app.register_blueprint(applications_bp)
     app.register_blueprint(verification_bp)
     app.register_blueprint(public_verify_bp)
-<<<<<<< Updated upstream
     app.register_blueprint(notifications_bp)
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(valuation_bp)
     app.register_blueprint(qr_bp)
-=======
-    app.register_blueprint(notifications_bp)
->>>>>>> Stashed changes

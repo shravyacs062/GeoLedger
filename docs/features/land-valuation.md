@@ -57,7 +57,7 @@ Response always includes:
 | Endpoint | Access |
 |---|---|
 | `GET /valuation/params` | Authenticated |
-| `PUT /valuation/params` | Admin / Registrar |
+| `PUT /valuation/params` | Admin |
 
 Admins can adjust base rates and multipliers from the Land Valuation screen (`/valuation`).
 

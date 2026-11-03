@@ -1,44 +1,57 @@
 import { useState, useEffect, useRef } from 'react';
+import { isAxiosError } from 'axios';
 import { Layout } from '../Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Input } from '../ui/input';
 import { Button } from '../ui/button';
-import { Search, Map as MapIcon, MapPin, Eye } from 'lucide-react';
+import { Search, MapPin, Eye } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import { api } from '../../../services/api';
+import { api, type GISLookup, type Property } from '../../../services/api';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
 export function PropertySearch() {
   const [searchQuery, setSearchQuery] = useState('');
-  const [properties, setProperties] = useState<any[]>([]);
-  const [filteredProperties, setFilteredProperties] = useState<any[]>([]);
-  const [activeGeoJson, setActiveGeoJson] = useState<any>(null);
-  const [gisMeta, setGisMeta] = useState<any>(null);
+  const [properties, setProperties] = useState<Array<Property & { id: string; location: string; areaLabel: string; owner: string; raw: Property }>>([]);
+  const [filteredProperties, setFilteredProperties] = useState<typeof properties>([]);
+  const [activeGeoJson, setActiveGeoJson] = useState<GeoJSON.GeoJsonObject | null>(null);
+  const [gisMeta, setGisMeta] = useState<GISLookup | null>(null);
+  const [loadError, setLoadError] = useState('');
+  const [gisError, setGisError] = useState('');
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
   const geojsonLayerRef = useRef<L.GeoJSON | null>(null);
 
   useEffect(() => {
-    api.properties.list().catch(() => []).then((data) => {
-      const list = (data || []).map((p: any) => ({
-        id: p.survey_number || p.property_id,
-        location: [p.village, p.district].filter(Boolean).join(', ') || 'Registered parcel',
-        area: p.area ? `${p.area} sq ft` : '—',
+    api.properties.list().then((data) => {
+      const list = (data || []).map((p: Property) => ({
+        id: String(p.survey_number || p.property_id || 'Unknown property'),
+        location: [p.village, p.district].filter(Boolean).join(', ') || 'Location not provided',
+        areaLabel: p.area != null ? `${p.area} sq ft` : 'Not provided',
         owner: p.owner_wallet
           ? `${p.owner_wallet.substring(0, 6)}...${p.owner_wallet.slice(-4)}`
           : '—',
-        status: p.status || 'REGISTERED',
+        status: p.status || 'Status unavailable',
         raw: p,
       }));
       setProperties(list);
       setFilteredProperties(list);
+    }).catch((error: unknown) => {
+      setLoadError(isAxiosError<{ message?: string }>(error)
+        ? error.response?.data?.message || error.message
+        : error instanceof Error ? error.message : 'Unable to load registered property records.');
     });
 
     api.gis.getBySurvey('SN-DEMO-001').then((res) => {
       if (res?.geojson) setActiveGeoJson(res.geojson);
       setGisMeta(res);
-    }).catch(() => {});
+    }).catch((error: unknown) => {
+      setActiveGeoJson(null);
+      setGisMeta(null);
+      setGisError(isAxiosError<{ message?: string }>(error)
+        ? error.response?.data?.message || error.message
+        : error instanceof Error ? error.message : 'GIS parcel data is temporarily unavailable.');
+    });
   }, []);
 
   const handleSearch = (queryOverride?: string) => {
@@ -54,10 +67,17 @@ export function PropertySearch() {
     );
     setFilteredProperties(matched);
 
+    setGisError('');
     api.gis.getBySurvey(q.toUpperCase()).then((res) => {
       if (res?.geojson) setActiveGeoJson(res.geojson);
       setGisMeta(res);
-    }).catch(() => {});
+    }).catch((error: unknown) => {
+      setActiveGeoJson(null);
+      setGisMeta(null);
+      setGisError(isAxiosError<{ message?: string }>(error)
+        ? error.response?.data?.message || error.message
+        : error instanceof Error ? error.message : 'GIS parcel data is temporarily unavailable.');
+    });
   };
 
   useEffect(() => {
@@ -90,13 +110,18 @@ export function PropertySearch() {
         },
         onEachFeature: (feature, layer) => {
           const props = feature.properties || {};
-          layer.bindPopup(
-            `<div class="p-2 font-sans">
-              <p class="font-bold text-[#0F766E] text-sm">Survey: ${props.survey_number || ''}</p>
-              <p class="text-xs text-gray-600">Area: ${props.area_sqft || 2500} sq ft</p>
-              <p class="text-xs text-gray-600">${props.locality || 'Thandavapura'}</p>
-            </div>`
-          );
+          const popup = document.createElement('div');
+          popup.className = 'p-2 font-sans';
+          const addLine = (text: string, className: string) => {
+            const line = document.createElement('p');
+            line.className = className;
+            line.textContent = text;
+            popup.appendChild(line);
+          };
+          addLine(`Survey: ${props.survey_number || 'Not provided'}`, 'text-sm font-bold text-teal-700');
+          if (props.area_sqft != null) addLine(`Area: ${props.area_sqft} sq ft`, 'text-xs text-gray-600');
+          if (props.locality) addLine(String(props.locality), 'text-xs text-gray-600');
+          layer.bindPopup(popup);
         },
       }).addTo(map);
       geojsonLayerRef.current = geoLayer;
@@ -152,21 +177,17 @@ export function PropertySearch() {
             <Card className="border-[#E2E8F0]">
               <CardHeader>
                 <CardTitle className="text-[#0F172A]">GIS Map View</CardTitle>
-                <CardDescription className="text-[#64748B]">
-                  Leaflet + OpenStreetMap parcel overlay
+                  <CardDescription className="text-[#64748B]">
+                    Sample parcel overlay on OpenStreetMap
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                {gisMeta && (
-                  <div className="mb-3 rounded-lg border border-[#FDE68A] bg-[#FFFBEB] px-3 py-2 text-xs text-[#92400E]">
-                    Data source: <strong>{gisMeta.data_source || gisMeta.status}</strong>
-                    {' · '}
-                    {gisMeta.disclaimer ||
-                      (gisMeta.found
-                        ? 'Demo GeoJSON — not verified government cadastral data.'
-                        : 'Synthetic placeholder parcel — not verified government cadastral data.')}
+                  <div className="mb-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                    {gisError
+                      ? gisError
+                      : `Preview only${gisMeta ? ` · ${gisMeta.data_source || gisMeta.status}` : ''}: parcel outlines are demo or synthetic data, not official cadastral boundaries.`}
                   </div>
-                )}
+                  {loadError && <p role="alert" className="mb-3 rounded-md bg-red-50 p-3 text-sm text-red-800">{loadError}</p>}
                 <div className="aspect-video bg-gradient-to-br from-[#0F766E]/20 to-[#38BDF8]/20 rounded-xl relative overflow-hidden">
                   <div ref={mapContainerRef} className="absolute inset-0 z-0 w-full h-full" />
 
@@ -175,11 +196,7 @@ export function PropertySearch() {
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
                         <div className="w-3 h-3 bg-[#0F766E] rounded-full"></div>
-                        <span className="text-xs text-[#64748B]">Demo GeoJSON (found)</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <div className="w-3 h-3 bg-[#38BDF8] rounded-full"></div>
-                        <span className="text-xs text-[#64748B]">Synthetic (generated)</span>
+                        <span className="text-xs text-[#64748B]">{gisMeta?.found ? 'Sample GeoJSON parcel' : 'Synthetic preview parcel'}</span>
                       </div>
                     </div>
                   </div>
@@ -193,7 +210,7 @@ export function PropertySearch() {
             <Card className="border-[#E2E8F0]">
               <CardHeader>
                 <CardTitle className="text-[#0F172A]">Search Results</CardTitle>
-                <CardDescription className="text-[#64748B]">{filteredProperties.length} properties found</CardDescription>
+                <CardDescription className="text-[#64748B]">{filteredProperties.length} registered {filteredProperties.length === 1 ? 'record' : 'records'}</CardDescription>
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
@@ -228,7 +245,7 @@ export function PropertySearch() {
                         </div>
                         <div className="flex justify-between">
                           <span className="text-[#64748B]">Area:</span>
-                          <span className="text-[#0F172A] font-medium">{property.area}</span>
+                          <span className="text-[#0F172A] font-medium">{property.areaLabel}</span>
                         </div>
                         <div className="flex justify-between">
                           <span className="text-[#64748B]">Owner:</span>
@@ -236,7 +253,7 @@ export function PropertySearch() {
                         </div>
                         <div className="flex justify-between">
                           <span className="text-[#64748B]">Coordinates:</span>
-                          <span className="text-[#0F172A] text-xs">{property.lat}, {property.lon}</span>
+                          <span className="text-[#0F172A] text-xs">{property.raw?.coordinates ? JSON.stringify(property.raw.coordinates) : 'Not available'}</span>
                         </div>
                       </div>
 
@@ -263,4 +280,3 @@ export function PropertySearch() {
     </Layout>
   );
 }
-

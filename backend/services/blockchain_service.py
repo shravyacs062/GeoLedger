@@ -35,13 +35,20 @@ class BlockchainService:
         self.contract = None
 
         force_sim = os.getenv("BLOCKCHAIN_SIMULATION", "").lower() in ("1", "true", "yes")
+        production = os.getenv("APP_ENV", "development").strip().lower() == "production"
         if force_sim or not self.contract_address or not self.private_key:
+            if production:
+                raise RuntimeError(
+                    "A deployed contract and BLOCKCHAIN_PRIVATE_KEY are required in production"
+                )
             self.simulation_mode = True
             return
 
         try:
             self.web3 = Web3(Web3.HTTPProvider(self.rpc_url, request_kwargs={"timeout": 2}))
             if not self.web3.is_connected():
+                if production:
+                    raise RuntimeError("Configured blockchain RPC is unavailable")
                 self.simulation_mode = True
                 return
 
@@ -56,7 +63,9 @@ class BlockchainService:
                 abi=artifact["abi"],
             )
             self.account = self.web3.eth.account.from_key(self.private_key)
-        except Exception:
+        except Exception as error:
+            if production:
+                raise RuntimeError("Could not initialize the configured blockchain contract") from error
             self.simulation_mode = True
 
     def _sim_hash(self, *parts) -> str:

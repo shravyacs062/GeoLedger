@@ -9,13 +9,10 @@ class GISService:
         self.parcels = self._load_parcels()
 
     def _load_parcels(self) -> dict:
-        if os.path.exists(self.geojson_file):
-            try:
-                with open(self.geojson_file, "r", encoding="utf-8") as f:
-                    return json.load(f)
-            except Exception:
-                pass
-        return {"type": "FeatureCollection", "features": []}
+        if not os.path.isfile(self.geojson_file):
+            raise RuntimeError(f"GIS sample data file was not found: {self.geojson_file}")
+        with open(self.geojson_file, "r", encoding="utf-8") as f:
+            return json.load(f)
 
     def get_geojson_by_survey_number(self, survey_number: str) -> dict:
         survey_norm = survey_number.strip().upper()

@@ -1,8 +1,8 @@
 import { BrowserProvider, formatEther, type Eip1193Provider } from 'ethers';
 
-export const LOCAL_CHAIN_ID = Number(import.meta.env.VITE_CHAIN_ID || 31337);
-export const LOCAL_RPC_URL = import.meta.env.VITE_RPC_URL || 'http://127.0.0.1:8545';
-export const LOCAL_CHAIN_NAME = import.meta.env.VITE_CHAIN_NAME || 'Hardhat Localhost';
+export const TARGET_CHAIN_ID = Number(import.meta.env.VITE_CHAIN_ID || 31337);
+export const TARGET_RPC_URL = import.meta.env.VITE_RPC_URL || 'http://127.0.0.1:8545';
+export const TARGET_CHAIN_NAME = import.meta.env.VITE_CHAIN_NAME || 'Hardhat Localhost';
 
 const SESSION_KEY = 'geoledger.wallet.connected';
 
@@ -31,6 +31,7 @@ export function sameAddress(a?: string | null, b?: string | null): boolean {
 }
 
 export function chainLabel(chainId: number | null): string {
+  if (chainId === TARGET_CHAIN_ID) return TARGET_CHAIN_NAME;
   switch (chainId) {
     case 1:
       return 'Ethereum Mainnet';
@@ -38,8 +39,6 @@ export function chainLabel(chainId: number | null): string {
       return 'Sepolia';
     case 137:
       return 'Polygon';
-    case 31337:
-      return 'Hardhat Localhost';
     default:
       return chainId ? `Chain ${chainId}` : 'Not connected';
   }
@@ -54,7 +53,7 @@ export function formatWalletError(err: unknown): string {
     return 'A MetaMask popup is already open. Open the extension and approve it.';
   }
   if (error?.code === 4902) {
-    return 'Hardhat Localhost is not in MetaMask yet. Approve adding the network.';
+    return `${TARGET_CHAIN_NAME} is not in MetaMask yet. Approve adding the network.`;
   }
   return error?.message || 'Failed to connect wallet.';
 }
@@ -102,13 +101,13 @@ export async function getChainId(): Promise<number> {
   return Number.parseInt(hex, 16);
 }
 
-export async function switchToLocalNetwork(): Promise<void> {
+export async function switchToTargetNetwork(): Promise<void> {
   const ethereum = getEthereum();
   if (!ethereum) {
     throw new Error('MetaMask is not installed.');
   }
 
-  const chainIdHex = `0x${LOCAL_CHAIN_ID.toString(16)}`;
+  const chainIdHex = `0x${TARGET_CHAIN_ID.toString(16)}`;
 
   try {
     await ethereum.request({
@@ -125,9 +124,9 @@ export async function switchToLocalNetwork(): Promise<void> {
       params: [
         {
           chainId: chainIdHex,
-          chainName: LOCAL_CHAIN_NAME,
+          chainName: TARGET_CHAIN_NAME,
           nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
-          rpcUrls: [LOCAL_RPC_URL],
+          rpcUrls: [TARGET_RPC_URL],
         },
       ],
     });

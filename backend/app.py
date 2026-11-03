@@ -21,6 +21,21 @@ def create_app(testing=False):
     if testing:
         app.config["TESTING"] = True
 
+    if not testing and app.config["APP_ENV"] == "production":
+        if app.config["DEBUG"]:
+            raise RuntimeError("DEBUG must be disabled when APP_ENV=production")
+        if len(app.config["SECRET_KEY"]) < 32 or app.config["SECRET_KEY"] == "change-me":
+            raise RuntimeError("Set a unique SECRET_KEY of at least 32 characters in production")
+        if not app.config["SESSION_COOKIE_SECURE"]:
+            raise RuntimeError("SESSION_COOKIE_SECURE must be enabled in production")
+        if not app.config["ADMIN_EMAIL"] or not app.config["ADMIN_PASSWORD"]:
+            raise RuntimeError("ADMIN_EMAIL and ADMIN_PASSWORD are required in production")
+        if not app.config["FRONTEND_ORIGINS"] or any(
+            not origin.startswith("https://")
+            for origin in app.config["FRONTEND_ORIGINS"]
+        ):
+            raise RuntimeError("Configure FRONTEND_ORIGINS with HTTPS origins in production")
+
     if not testing and app.config["SECRET_KEY"] == "change-me":
         raise RuntimeError("Set a strong SECRET_KEY before starting GeoLedger")
 
@@ -29,6 +44,11 @@ def create_app(testing=False):
         supports_credentials=True,
         origins=app.config["FRONTEND_ORIGINS"],
     )
+
+    if not testing and app.config["APP_ENV"] == "production":
+        from services.blockchain_service import BlockchainService
+
+        BlockchainService()
 
     # Initialize database
     init_db(app)

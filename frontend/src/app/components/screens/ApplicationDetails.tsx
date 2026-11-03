@@ -18,7 +18,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { api } from '../../../services/api';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../context/useAuth';
 
 const STATUS_LABELS: Record<string, string> = {
   VERIFIED: 'Verified',
@@ -144,7 +144,7 @@ export function ApplicationDetails() {
     setActionLoading(true);
     setErrorMsg(null);
     try {
-      await api.verification.review(docId, status, `Marked ${status} by registrar`);
+      await api.verification.review(docId, status, `Marked ${status} by Admin`);
       setSuccessMsg(`Document ${status}`);
       await loadData();
     } catch (err: any) {
