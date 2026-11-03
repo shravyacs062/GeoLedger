@@ -6,12 +6,8 @@ from werkzeug.utils import secure_filename
 
 from config import Config
 from database.client import get_database
-from models.document import DocumentModel
 from utils.errors import APIError
-from utils.validation import (
-    validate_document_upload,
-    validate_property_id,
-)
+from utils.validation import validate_document_upload
 
 
 class DocumentService:
@@ -42,6 +38,13 @@ class DocumentService:
             file,
         )
 
+        if application_id:
+            application = self.db.applications.find_one({"_id": application_id})
+            if not application:
+                raise APIError("Application not found", status_code=404)
+            if document_type.upper() not in application.get("required_documents", []):
+                raise APIError("Document type is not required for this application", status_code=400)
+
         orig_filename = secure_filename(file.filename)
         if not orig_filename:
             raise APIError("Invalid filename", status_code=400)
@@ -51,6 +54,9 @@ class DocumentService:
             raise APIError("Uploaded file is empty", status_code=400)
 
         document_hash = hashlib.sha256(file_bytes).hexdigest()
+        duplicate = self.collection.find_one({"document_hash": document_hash})
+        if duplicate:
+            raise APIError("This document has already been submitted", status_code=409)
 
         # Duplicate document detection by hash
         duplicate = self.collection.find_one({"document_hash": document_hash})
@@ -132,6 +138,7 @@ class DocumentService:
         now = datetime.utcnow().isoformat()
 
         document_data = {
+            "_id": uuid.uuid4().hex,
             "property_id": property_id,
             "application_id": application_id,
             "document_type": document_type.upper(),
@@ -140,6 +147,7 @@ class DocumentService:
             "storage_location": file_path,
             "file_size": len(file_bytes),
             "document_hash": document_hash,
+<<<<<<< Updated upstream
             "verification_status": initial_status,
             "verification_score": 100 if not high_severity_fail else 40,
             "verification_checks": verification_checks,
@@ -153,11 +161,23 @@ class DocumentService:
             "document_number": extracted.get("document_number"),
             "issuing_authority": extracted.get("issuing_authority"),
             "issue_date": extracted.get("issue_date"),
+=======
+            "verification_status": "PENDING",
+            "verification_checks": [
+                {
+                    "name": "FILE_INTEGRITY",
+                    "passed": True,
+                    "severity": "LOW",
+                    "message": "SHA-256 baseline recorded; authenticity review is still required",
+                }
+            ],
+>>>>>>> Stashed changes
             "verification_notes": None,
             "uploaded_at": now,
             "verified_at": None,
         }
 
+        result = None
         try:
             result = self.collection.insert_one(document_data)
             document_data["_id"] = result.inserted_id
@@ -165,14 +185,13 @@ class DocumentService:
 
             if application_id:
                 from services.application_service import ApplicationService
-                try:
-                    ApplicationService().add_submitted_document(
-                        application_id, result.inserted_id
-                    )
-                except Exception as ex:
-                    print(f"Warning linking document to application: {ex}")
+                ApplicationService().add_submitted_document(
+                    application_id, result.inserted_id
+                )
 
         except Exception:
+            if result:
+                self.collection.delete_one({"_id": result.inserted_id})
             try:
                 os.remove(file_path)
             except OSError:
@@ -183,6 +202,10 @@ class DocumentService:
 
     def get_documents_for_property(self, property_id: str) -> list:
         documents = self.collection.find({"property_id": property_id})
+        return [self._serialize_document(doc) for doc in documents]
+
+    def list_documents(self) -> list:
+        documents = self.collection.find().sort("uploaded_at", -1)
         return [self._serialize_document(doc) for doc in documents]
 
     def get_documents_for_application(self, application_id: str) -> list:
@@ -196,6 +219,23 @@ class DocumentService:
         doc = self.collection.find_one({"_id": document_id})
         if not doc:
             raise APIError("Document not found", status_code=404)
+        file_path = doc.get("storage_location")
+        if not file_path or not os.path.exists(file_path):
+            raise APIError("Document file not found on server", status_code=404)
+        sha256 = hashlib.sha256()
+        with open(file_path, "rb") as stored_file:
+            for chunk in iter(lambda: stored_file.read(8192), b""):
+                sha256.update(chunk)
+        if sha256.hexdigest() != doc.get("document_hash"):
+            self.collection.update_one(
+                {"_id": document_id},
+                {"$set": {
+                    "verification_status": "REJECTED",
+                    "verification_notes": "File integrity check failed during retrieval",
+                    "verified_at": datetime.utcnow().isoformat(),
+                }},
+            )
+            raise APIError("Document integrity check failed; download denied", status_code=409)
         return self._serialize_document(doc)
 
     def delete_document(self, document_id: str) -> None:

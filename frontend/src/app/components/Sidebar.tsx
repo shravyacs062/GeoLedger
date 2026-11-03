@@ -16,10 +16,16 @@ import {
   Calculator,
   LayoutDashboard,
 } from 'lucide-react';
+<<<<<<< Updated upstream
 import { useWallet } from '../context/WalletContext';
 import { useAuth } from '../context/AuthContext';
 import { shortenAddress } from '../../services/wallet';
 import { api } from '../../services/api';
+=======
+import { useWallet } from '../context/useWallet';
+import { shortenAddress } from '../../services/wallet';
+import { useAuth } from '../context/useAuth';
+>>>>>>> Stashed changes
 
 const userNav = [
   { icon: Home, label: 'Dashboard', path: '/dashboard' },
@@ -53,6 +59,7 @@ export function Sidebar() {
   const location = useLocation();
   const navigate = useNavigate();
   const { address, disconnect, chainName, isLocalNetwork } = useWallet();
+<<<<<<< Updated upstream
   const { user, isAdmin, logout } = useAuth();
   const [unreadCount, setUnreadCount] = useState(0);
 
@@ -63,6 +70,9 @@ export function Sidebar() {
       .then((items) => setUnreadCount((items || []).filter((n: any) => !n.is_read).length))
       .catch(() => setUnreadCount(0));
   }, [location.pathname]);
+=======
+  const { user, logout } = useAuth();
+>>>>>>> Stashed changes
 
   const isItemActive = (path: string) => {
     if (path === '/dashboard' || path === '/admin') return location.pathname === path;
@@ -119,18 +129,32 @@ export function Sidebar() {
             <User className="w-5 h-5" />
           </div>
           <div className="min-w-0">
+<<<<<<< Updated upstream
             <p className="text-sm font-medium truncate">{user?.full_name || user?.email || 'Account'}</p>
             <p className={`text-xs truncate ${isLocalNetwork ? 'text-[#5EEAD4]' : 'text-[#FBBF24]'}`}>
               {address ? shortenAddress(address) : chainName}
             </p>
+=======
+            <p className="text-sm font-medium truncate">{user?.name || 'Account'}</p>
+            <p className="text-xs truncate text-[#94A3B8]">{user?.email}</p>
+            {address && <p className={`text-xs truncate ${isLocalNetwork ? 'text-[#5EEAD4]' : 'text-[#FBBF24]'}`}>
+              {shortenAddress(address)} · {chainName}
+            </p>}
+>>>>>>> Stashed changes
           </div>
         </Link>
         <button
           type="button"
           onClick={async () => {
+<<<<<<< Updated upstream
             await disconnect();
             await logout();
             navigate(isAdmin ? '/admin/login' : '/login');
+=======
+            await logout();
+            await disconnect().catch(() => undefined);
+            navigate('/login');
+>>>>>>> Stashed changes
           }}
           className="flex w-full items-center gap-3 px-4 py-2.5 rounded-lg text-sm text-[#E2E8F0] hover:bg-[#334155]"
         >

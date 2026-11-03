@@ -23,7 +23,7 @@ import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Input } from '../ui/input';
 import { api } from '../../../services/api';
-import { useWallet } from '../../context/WalletContext';
+import { useWallet } from '../../context/useWallet';
 import { sameAddress } from '../../../services/wallet';
 
 export function MyProperties() {

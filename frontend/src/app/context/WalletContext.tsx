@@ -1,14 +1,11 @@
 import {
-  createContext,
   useCallback,
-  useContext,
   useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from 'react';
 
-import { api } from '../../services/api';
 import {
   LOCAL_CHAIN_ID,
   chainLabel,
@@ -23,24 +20,7 @@ import {
   switchToLocalNetwork,
   walletSession,
 } from '../../services/wallet';
-
-type WalletContextValue = {
-  address: string | null;
-  chainId: number | null;
-  chainName: string;
-  balanceEth: string | null;
-  isConnecting: boolean;
-  isConnected: boolean;
-  hasChecked: boolean;
-  error: string | null;
-  hasMetaMask: boolean;
-  isLocalNetwork: boolean;
-  connect: () => Promise<string>;
-  disconnect: () => Promise<void>;
-  switchToLocal: () => Promise<void>;
-};
-
-const WalletContext = createContext<WalletContextValue | undefined>(undefined);
+import { WalletContext, type WalletContextValue } from './wallet-context';
 
 export function WalletProvider({ children }: { children: ReactNode }) {
   const [address, setAddress] = useState<string | null>(null);
@@ -49,7 +29,7 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   const [isConnecting, setIsConnecting] = useState(false);
   const [hasChecked, setHasChecked] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [hasMetaMask, setHasMetaMask] = useState(false);
+  const [hasMetaMask] = useState(() => isMetaMaskInstalled());
 
   const refresh = useCallback(async (nextAddress: string) => {
     setAddress(nextAddress);
@@ -79,12 +59,11 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       }
       await refresh(nextAddress);
       walletSession.markConnected();
-      void api.auth.register(nextAddress);
       return nextAddress;
     } catch (err) {
       const message = formatWalletError(err);
       setError(message);
-      throw new Error(message);
+      throw new Error(message, { cause: err });
     } finally {
       setIsConnecting(false);
       setHasChecked(true);
@@ -112,13 +91,11 @@ export function WalletProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       const message = formatWalletError(err);
       setError(message);
-      throw new Error(message);
+      throw new Error(message, { cause: err });
     }
   }, [address, refresh]);
 
   useEffect(() => {
-    setHasMetaMask(isMetaMaskInstalled());
-
     let cancelled = false;
 
     const restore = async () => {
@@ -160,7 +137,6 @@ export function WalletProvider({ children }: { children: ReactNode }) {
       }
       walletSession.markConnected();
       void refresh(accounts[0]);
-      void api.auth.register(accounts[0]);
     };
 
     const onChainChanged = () => {
@@ -214,12 +190,4 @@ export function WalletProvider({ children }: { children: ReactNode }) {
   );
 
   return <WalletContext.Provider value={value}>{children}</WalletContext.Provider>;
-}
-
-export function useWallet() {
-  const context = useContext(WalletContext);
-  if (!context) {
-    throw new Error('useWallet must be used inside WalletProvider');
-  }
-  return context;
 }

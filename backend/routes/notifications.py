@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 from flask import Blueprint, g
 
 from services.notification_service import NotificationService
@@ -39,3 +40,28 @@ def mark_all_read():
         role=g.user_role,
     )
     return success_response("All notifications marked as read", data={"updated": count})
+=======
+from flask import Blueprint, session
+
+from services.notification_service import NotificationService
+from utils.auth import require_user
+from utils.responses import success_response
+
+notifications_bp = Blueprint("notifications", __name__, url_prefix="/notifications")
+
+
+@notifications_bp.route("", methods=["GET"])
+def list_notifications():
+    user = require_user()
+    return success_response(
+        "Notifications retrieved successfully",
+        data=NotificationService().list_for(user),
+    )
+
+
+@notifications_bp.route("/<notification_id>/read", methods=["PUT"])
+def mark_notification_read(notification_id):
+    user = require_user()
+    notification = NotificationService().mark_read(notification_id, user)
+    return success_response("Notification marked as read", data=notification)
+>>>>>>> Stashed changes

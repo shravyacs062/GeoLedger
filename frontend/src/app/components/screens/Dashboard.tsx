@@ -6,7 +6,27 @@ import { Button } from '../ui/button';
 import { Link } from 'react-router-dom';
 import { api } from '../../../services/api';
 
+type PropertyRecord = {
+  id?: string;
+  survey_number?: string;
+  property_id?: string;
+  village?: string;
+  district?: string;
+  area?: number | string;
+  status?: string;
+};
+type ApplicationRecord = { status: string };
+type TransactionRecord = {
+  transaction_type?: string;
+  type?: string;
+  survey_number?: string;
+  surveyNumber?: string;
+  property_id?: string;
+  timestamp?: string;
+};
+
 export function Dashboard() {
+<<<<<<< Updated upstream
   const [properties, setProperties] = useState<any[]>([]);
   const [applications, setApplications] = useState<any[]>([]);
   const [transactions, setTransactions] = useState<any[]>([]);
@@ -23,10 +43,29 @@ export function Dashboard() {
       setProperties(props || []);
       setApplications(apps || []);
       setTransactions(txs || []);
+=======
+  const [properties, setProperties] = useState<PropertyRecord[]>([]);
+  const [applications, setApplications] = useState<ApplicationRecord[]>([]);
+  const [transactions, setTransactions] = useState<TransactionRecord[]>([]);
+  const [loadError, setLoadError] = useState('');
+
+  useEffect(() => {
+    Promise.all([
+      api.properties.list(),
+      api.applications.list(),
+      api.blockchain.getTransactions(),
+    ]).then(([props, apps, txs]) => {
+      setProperties(props || []);
+      setApplications(apps || []);
+      setTransactions(txs || []);
+    }).catch((error) => {
+      setLoadError(error?.response?.data?.message || 'Dashboard data could not be loaded.');
+>>>>>>> Stashed changes
     });
   }, []);
 
   const stats = [
+<<<<<<< Updated upstream
     {
       icon: Map,
       label: 'My Properties',
@@ -71,6 +110,25 @@ export function Dashboard() {
     action: (t.application_type || t.transaction_type || 'Application').replace(/_/g, ' '),
     property: t.survey_number || t.property_id || '—',
     time: t.updated_at || t.created_at || t.timestamp || 'Recent',
+=======
+    { icon: Map, label: 'Your Properties', value: String(properties.length), color: 'bg-[#0F766E]' },
+    { icon: FileText, label: 'Pending Applications', value: String(applications.filter(a => !['COMPLETED', 'REJECTED'].includes(a.status)).length), color: 'bg-[#38BDF8]' },
+    { icon: TrendingUp, label: 'Your Transactions', value: String(transactions.length), color: 'bg-[#16A34A]' },
+    { icon: Activity, label: 'Completed Applications', value: String(applications.filter(a => a.status === 'COMPLETED').length), color: 'bg-[#334155]' },
+  ];
+
+  const recentProperties = properties.slice(0, 3).map((p) => ({
+    id: p.survey_number || p.property_id || p.id,
+    location: [p.village, p.district].filter(Boolean).join(', ') || 'Location not provided',
+    area: p.area ? `${p.area}` : 'Area not provided',
+    status: p.status || 'REGISTERED',
+  }));
+
+  const recentActivity = transactions.slice(0, 4).map((t) => ({
+    action: (t.transaction_type || t.type || 'Transaction').replace(/_/g, ' '),
+    property: t.survey_number || t.surveyNumber || t.property_id || 'Property',
+    time: t.timestamp ? new Date(t.timestamp).toLocaleDateString() : 'Date unavailable',
+>>>>>>> Stashed changes
   }));
 
   return (
@@ -78,8 +136,13 @@ export function Dashboard() {
       <div className="p-4 lg:p-8">
         <div className="mb-8">
           <h1 className="text-3xl font-semibold text-[#0F172A] mb-2">Dashboard</h1>
+<<<<<<< Updated upstream
           <p className="text-[#64748B]">Overview of your properties, applications, and transfers.</p>
+=======
+          <p className="text-[#64748B]">Your registered properties, applications, and blockchain activity.</p>
+>>>>>>> Stashed changes
         </div>
+        {loadError && <p role="alert" className="mb-4 rounded-md bg-red-50 p-3 text-sm text-red-800">{loadError}</p>}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {stats.map((stat, index) => {
@@ -141,6 +204,7 @@ export function Dashboard() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
+<<<<<<< Updated upstream
                   {recentProperties.length === 0 && (
                     <p className="text-sm text-[#64748B]">No registered properties yet.</p>
                   )}
@@ -150,13 +214,26 @@ export function Dashboard() {
                       to={`/properties/${property.id}`}
                       className="flex items-center justify-between p-4 bg-[#F8FAFC] rounded-lg hover:bg-[#F1F5F9]"
                     >
+=======
+                  {recentProperties.length === 0 && <p className="py-6 text-center text-sm text-[#64748B]">No properties are linked to your account yet.</p>}
+                  {recentProperties.map((property, index) => (
+                    <div key={index} className="flex items-center justify-between p-4 bg-[#F8FAFC] rounded-lg">
+>>>>>>> Stashed changes
                       <div className="flex-1">
                         <p className="font-medium text-[#0F172A]">{property.id}</p>
                         <p className="text-sm text-[#64748B]">{property.location}</p>
                       </div>
                       <div className="text-right">
                         <p className="text-sm text-[#0F172A]">{property.area}</p>
+<<<<<<< Updated upstream
                         <span className="inline-block px-2 py-1 rounded text-xs mt-1 bg-[#16A34A]/10 text-[#16A34A]">
+=======
+                        <span className={`inline-block px-2 py-1 rounded text-xs mt-1 ${
+                          property.status === 'REGISTERED'
+                            ? 'bg-[#16A34A]/10 text-[#16A34A]'
+                            : 'bg-[#38BDF8]/10 text-[#38BDF8]'
+                        }`}>
+>>>>>>> Stashed changes
                           {property.status}
                         </span>
                       </div>
@@ -175,10 +252,15 @@ export function Dashboard() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
+<<<<<<< Updated upstream
                   {recentActivity.length === 0 && (
                     <p className="text-sm text-[#64748B]">No activity yet.</p>
                   )}
                   {recentActivity.map((activity: any, index: number) => (
+=======
+                  {recentActivity.length === 0 && <p className="py-6 text-center text-sm text-[#64748B]">No transactions recorded yet.</p>}
+                  {recentActivity.map((activity, index) => (
+>>>>>>> Stashed changes
                     <div key={index} className="flex gap-4">
                       <div className="w-2 h-2 bg-[#0F766E] rounded-full mt-2 flex-shrink-0"></div>
                       <div className="flex-1">

@@ -1,4 +1,9 @@
 from datetime import datetime
+<<<<<<< Updated upstream
+=======
+import uuid
+from bson import ObjectId
+>>>>>>> Stashed changes
 
 from database.client import get_database
 from services.blockchain_service import BlockchainService
@@ -60,11 +65,18 @@ class ApplicationService:
         survey_number = validate_survey_number(survey_number)
 
         property_id = data.get("property_id") or survey_number
+        party_details = data.get("party_details") or {}
+        if application_type == "OWNERSHIP_TRANSFER":
+            buyer_details = party_details.get("buyer") or {}
+            buyer_wallet = validate_wallet_address(
+                buyer_details.get("wallet_address") or data.get("buyer_wallet") or ""
+            )
+            if buyer_wallet.lower() == applicant_wallet.lower():
+                raise APIError("New owner wallet must differ from the current owner", status_code=400)
 
         existing_application = self.collection.find_one(
             {
                 "survey_number": survey_number,
-                "application_type": application_type,
                 "status": {
                     "$nin": [
                         "REJECTED",
@@ -79,6 +91,12 @@ class ApplicationService:
                 "An active application already exists for this survey number",
                 status_code=409,
             )
+
+        existing_property = self.db.properties.find_one({"survey_number": survey_number})
+        if application_type == "NEW_REGISTRATION" and existing_property:
+            raise APIError("A property is already registered for this survey number", status_code=409)
+        if application_type in ("OWNERSHIP_TRANSFER", "INHERITANCE_TRANSFER") and not existing_property:
+            raise APIError("A registered property is required for transfer or inheritance", status_code=404)
 
         required_documents = DOCUMENT_REQUIREMENTS.get(
             application_type,
@@ -140,18 +158,34 @@ class ApplicationService:
 
         property_details = data.get("property_details") or {}
         application_doc = {
+            "_id": uuid.uuid4().hex,
             "application_type": application_type,
             "applicant_wallet": applicant_wallet,
             "applicant_user_id": data.get("applicant_user_id"),
+<<<<<<< Updated upstream
+=======
+            "applicant_email": data.get("applicant_email"),
+>>>>>>> Stashed changes
             "survey_number": survey_number,
             "property_id": property_id,
             "status": "SUBMITTED",
             "required_documents": required_documents,
             "submitted_documents": [],
+<<<<<<< Updated upstream
             "party_details": party_details,
             "property_details": property_details,
             "admin_remarks": None,
             "correction_requested": False,
+=======
+            "party_details": party_details or {
+                "applicant_name": data.get("applicant_name", "Applicant"),
+                "applicant_email": data.get("applicant_email", ""),
+                "applicant_phone": data.get("applicant_phone", ""),
+                "buyer_wallet": data.get("buyer_wallet", ""),
+                "seller_wallet": data.get("seller_wallet", applicant_wallet),
+            },
+            "property_details": data.get("property_details") or {},
+>>>>>>> Stashed changes
             "government_reference": f"GOV-REQ-{survey_number}",
             "rejection_reason": None,
             "verification_summary": None,
@@ -164,6 +198,7 @@ class ApplicationService:
 
         result = self.collection.insert_one(application_doc)
         application_doc["_id"] = result.inserted_id
+<<<<<<< Updated upstream
 
         create_notification(
             recipient_id=data.get("applicant_user_id"),
@@ -185,6 +220,22 @@ class ApplicationService:
             "survey_number": survey_number,
         })
 
+=======
+        from services.notification_service import NotificationService
+        notifications = NotificationService()
+        notifications.create(
+            "Application submitted",
+            f"Your {application_type.replace('_', ' ').lower()} application for survey {survey_number} was submitted.",
+            user_id=application_doc.get("applicant_user_id"),
+            application_id=str(result.inserted_id),
+        )
+        notifications.create(
+            "New application submitted",
+            f"{application_type.replace('_', ' ')} application for survey {survey_number} requires review.",
+            role="admin",
+            application_id=str(result.inserted_id),
+        )
+>>>>>>> Stashed changes
         return self._serialize_application(application_doc)
 
     # ---------------------------------------------------------
@@ -246,6 +297,8 @@ class ApplicationService:
                 status_code=400,
             )
 
+        if status in ("COMPLETED", "BLOCKCHAIN_PENDING", "APPROVED"):
+            raise APIError("Use the approval workflow to approve or anchor an application", status_code=403)
         update_fields = {
             "status": status,
             "updated_at": datetime.utcnow().isoformat(),
@@ -265,7 +318,15 @@ class ApplicationService:
         if result.matched_count == 0:
             raise APIError("Application not found", status_code=404)
 
-        return self.get_application(application_id)
+        application = self.get_application(application_id)
+        from services.notification_service import NotificationService
+        NotificationService().create(
+            "Application status updated",
+            f"Your application for survey {application.get('survey_number')} is now {status}. {rejection_reason or ''}".strip(),
+            user_id=application.get("applicant_user_id"),
+            application_id=application_id,
+        )
+        return application
 
     # ---------------------------------------------------------
     # ADD SUBMITTED DOCUMENT
@@ -367,12 +428,16 @@ class ApplicationService:
 
         # Execute Blockchain Transaction
         try:
+<<<<<<< Updated upstream
             if app_type in (
                 "OWNERSHIP_TRANSFER",
                 "TRANSFER",
                 "INHERITANCE_TRANSFER",
                 "INHERITANCE",
             ):
+=======
+            if app_type in ("OWNERSHIP_TRANSFER", "TRANSFER", "INHERITANCE_TRANSFER"):
+>>>>>>> Stashed changes
                 party_details = application.get("party_details") or {}
                 buyer = party_details.get("buyer") or {}
                 new_owner = (
@@ -470,6 +535,11 @@ class ApplicationService:
                         "geojson_reference": survey_number,
                         "coordinates": details.get("coordinates"),
                         "status": "REGISTERED",
+                        **{
+                            key: application.get("property_details", {}).get(key)
+                            for key in ("land_type", "area", "village", "taluk", "district", "state", "geojson_reference", "boundary")
+                            if application.get("property_details", {}).get(key) is not None
+                        },
                         "blockchain_tx_hash": blockchain_result.get("transaction_hash"),
                         "blockchain_block_number": blockchain_result.get("block_number"),
                         "created_at": datetime.utcnow().isoformat(),
@@ -517,6 +587,7 @@ class ApplicationService:
                 {"$set": update_data},
             )
 
+<<<<<<< Updated upstream
             # Generate QR for newly registered properties
             if app_type in ("NEW_REGISTRATION", "REGISTRATION"):
                 try:
@@ -540,6 +611,28 @@ class ApplicationService:
             })
 
             return self.get_application(application_id)
+=======
+            completed = self.get_application(application_id)
+            from services.notification_service import NotificationService
+            NotificationService().create(
+                "Application approved",
+                f"Your application for survey {survey_number} has been approved and recorded on-chain.",
+                user_id=completed.get("applicant_user_id"),
+                application_id=application_id,
+            )
+            if app_type in ("OWNERSHIP_TRANSFER", "TRANSFER", "INHERITANCE_TRANSFER"):
+                buyer_wallet = (((application.get("party_details") or {}).get("buyer") or {}).get("wallet_address"))
+                if buyer_wallet:
+                    buyer_user = self.db.users.find_one({"wallet_address": buyer_wallet})
+                    if buyer_user:
+                        NotificationService().create(
+                            "Ownership transferred",
+                            f"Ownership of survey {survey_number} was transferred to your wallet.",
+                            user_id=str(buyer_user.get("_id")),
+                            application_id=application_id,
+                        )
+            return completed
+>>>>>>> Stashed changes
 
         except Exception as exc:
             self.collection.update_one(

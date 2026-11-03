@@ -4,6 +4,7 @@ const BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://127.0.0.1:5000';
 
 const client = axios.create({
   baseURL: BASE_URL,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -30,16 +31,29 @@ client.interceptors.request.use((config) => {
 
 export const api = {
   auth: {
-    register: async (walletAddress: string) => {
-      try {
-        const res = await client.post('/auth/register', { wallet_address: walletAddress });
-        return res.data?.data;
-      } catch (err: unknown) {
-        const status = (err as { response?: { status?: number } })?.response?.status;
-        if (status === 409) return null;
-        console.warn('Wallet registration skipped', err);
-        return null;
-      }
+    register: async (data: { name: string; email: string; password: string; wallet_address?: string }) => {
+      const res = await client.post('/auth/register', data);
+      return res.data?.data;
+    },
+    login: async (email: string, password: string, role: 'user' | 'admin') => {
+      const res = await client.post('/auth/login', { email, password, role });
+      return res.data?.data;
+    },
+    me: async () => {
+      const res = await client.get('/auth/me');
+      return res.data?.data;
+    },
+    logout: async () => {
+      const res = await client.post('/auth/logout');
+      return res.data;
+    },
+    walletChallenge: async (wallet_address: string) => {
+      const res = await client.post('/auth/wallet-challenge', { wallet_address });
+      return res.data?.data as { message: string };
+    },
+    updateProfile: async (data: { name?: string; wallet_address?: string; signature?: string }) => {
+      const res = await client.patch('/auth/profile', data);
+      return res.data?.data;
     },
     registerAccount: async (data: {
       email: string;
@@ -139,18 +153,23 @@ export const api = {
       return res.data?.data || [];
     },
     getBySurvey: async (surveyNumber: string) => {
-      const res = await client.get(`/properties/${surveyNumber}`);
+      const res = await client.get(`/properties/${encodeURIComponent(surveyNumber)}`);
       return res.data?.data;
     },
-    create: async (data: any) => {
+    create: async (data: Record<string, unknown>) => {
       const res = await client.post('/properties', data);
       return res.data?.data;
     },
   },
 
   applications: {
+<<<<<<< Updated upstream
     list: async (status?: string, applicantWallet?: string, applicationType?: string) => {
       const params: any = {};
+=======
+    list: async (status?: string, applicantWallet?: string) => {
+      const params: Record<string, string> = {};
+>>>>>>> Stashed changes
       if (status) params.status = status;
       if (applicantWallet) params.applicant_wallet = applicantWallet;
       if (applicationType) params.application_type = applicationType;
@@ -161,11 +180,11 @@ export const api = {
       const res = await client.get(`/applications/${id}`);
       return res.data?.data;
     },
-    create: async (data: any) => {
+    create: async (data: Record<string, unknown>) => {
       const res = await client.post('/applications', data);
       return res.data?.data;
     },
-    updateStatus: async (id: string, data: { status: string; rejection_reason?: string; verification_summary?: any }) => {
+    updateStatus: async (id: string, data: { status: string; rejection_reason?: string; verification_summary?: Record<string, unknown> }) => {
       const res = await client.put(`/applications/${id}/status`, data);
       return res.data?.data;
     },
@@ -210,6 +229,10 @@ export const api = {
       const res = await client.get(`/documents/property/${propertyId}`);
       return res.data?.data || [];
     },
+    list: async () => {
+      const res = await client.get('/documents');
+      return res.data?.data || [];
+    },
     delete: async (documentId: string) => {
       const res = await client.delete(`/documents/${documentId}`);
       return res.data;
@@ -231,11 +254,11 @@ export const api = {
   },
 
   ownership: {
-    submitTransfer: async (data: any) => {
+    submitTransfer: async (data: Record<string, unknown>) => {
       const res = await client.post('/ownership/transfer', data);
       return res.data?.data;
     },
-    transfer: async (data: any) => {
+    transfer: async (data: Record<string, unknown>) => {
       const res = await client.post('/ownership/transfer', data);
       return res.data?.data;
     },
@@ -273,7 +296,18 @@ export const api = {
 
   publicVerify: {
     verifyProperty: async (identifier: string) => {
-      const res = await client.get(`/verify/property/${identifier}`);
+      const res = await client.get(`/verify/property/${encodeURIComponent(identifier)}`);
+      return res.data?.data;
+    },
+  },
+
+  notifications: {
+    list: async () => {
+      const res = await client.get('/notifications');
+      return res.data?.data || [];
+    },
+    markRead: async (id: string) => {
+      const res = await client.put(`/notifications/${id}/read`);
       return res.data?.data;
     },
   },

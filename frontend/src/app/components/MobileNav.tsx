@@ -1,4 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
+<<<<<<< Updated upstream
 import { Home, Search, FileText, Bell, User, LayoutDashboard } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -21,6 +22,22 @@ export function MobileNav() {
         { icon: Bell, label: 'Alerts', path: '/notifications' },
         { icon: User, label: 'Profile', path: '/profile' },
       ];
+=======
+import { Home, Search, FileText, Bell, User, LogOut } from 'lucide-react';
+import { useAuth } from '../context/useAuth';
+
+const navItems = [
+  { icon: Home, label: 'Home', path: '/dashboard' },
+  { icon: Search, label: 'Search', path: '/search' },
+  { icon: FileText, label: 'Register', path: '/register' },
+  { icon: Bell, label: 'Alerts', path: '/notifications' },
+  { icon: User, label: 'Profile', path: '/profile' },
+];
+
+export function MobileNav() {
+  const location = useLocation();
+  const { logout } = useAuth();
+>>>>>>> Stashed changes
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-[#E2E8F0] z-50">
@@ -42,6 +59,14 @@ export function MobileNav() {
             </Link>
           );
         })}
+        <button
+          type="button"
+          onClick={() => void logout().then(() => { window.location.href = '/login'; })}
+          className="flex flex-col items-center gap-1 px-3 py-2 text-[#64748B]"
+        >
+          <LogOut className="w-5 h-5" />
+          <span className="text-xs">Sign out</span>
+        </button>
       </div>
     </nav>
   );

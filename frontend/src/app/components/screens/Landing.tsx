@@ -1,12 +1,21 @@
 import { Link } from 'react-router-dom';
 import { Map, Shield, Globe, Lock, FileCheck, Users } from 'lucide-react';
 import { Button } from '../ui/button';
+<<<<<<< Updated upstream
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { useAuth } from '../../context/AuthContext';
 
 export function Landing() {
   const { isAuthenticated, isAdmin } = useAuth();
   const homePath = isAuthenticated ? (isAdmin ? '/admin' : '/dashboard') : '/login';
+=======
+import { Card, CardDescription, CardHeader, CardTitle } from '../ui/card';
+import { useAuth } from '../../context/useAuth';
+
+export function Landing() {
+  const { user } = useAuth();
+  const dashboardPath = user?.role === 'admin' ? '/admin' : '/dashboard';
+>>>>>>> Stashed changes
   const features = [
     {
       icon: Shield,
@@ -52,6 +61,7 @@ export function Landing() {
               </div>
               <span className="font-semibold text-[#0F172A]">GeoLedger</span>
             </div>
+<<<<<<< Updated upstream
             <div className="flex items-center gap-2">
               <Link to="/admin/login">
                 <Button variant="outline" className="border-[#E2E8F0]">Admin</Button>
@@ -62,6 +72,13 @@ export function Landing() {
                 </Button>
               </Link>
             </div>
+=======
+            <Link to={user ? dashboardPath : '/login'}>
+              <Button className="bg-[#0F766E] hover:bg-[#0F766E]/90">
+                {user ? user.name : 'User sign in'}
+              </Button>
+            </Link>
+>>>>>>> Stashed changes
           </div>
         </div>
       </header>
@@ -78,6 +95,7 @@ export function Landing() {
               to create a transparent, tamper-proof land registry system for modern governance.
             </p>
             <div className="flex flex-col sm:flex-row gap-4">
+<<<<<<< Updated upstream
               <Link to={homePath}>
                 <Button size="lg" className="bg-[#0F766E] hover:bg-[#0F766E]/90 w-full sm:w-auto">
                   {isAuthenticated ? 'Open Dashboard' : 'Citizen Login'}
@@ -91,6 +109,11 @@ export function Landing() {
               <Link to="/public/verify/SN-DEMO-001">
                 <Button size="lg" variant="outline" className="w-full sm:w-auto border-[#E2E8F0]">
                   Public Verify Demo
+=======
+              <Link to={user ? dashboardPath : '/login'}>
+                <Button size="lg" className="bg-[#0F766E] hover:bg-[#0F766E]/90 w-full sm:w-auto">
+                  {user ? 'Open dashboard' : 'Create user account'}
+>>>>>>> Stashed changes
                 </Button>
               </Link>
               <Link to="/search">
@@ -100,6 +123,7 @@ export function Landing() {
               </Link>
             </div>
           </div>
+          <p className="mt-8 text-center text-sm text-[#64748B]">Registrar? <Link to="/admin/login" className="text-[#0F766E] underline">Admin sign in</Link></p>
 
           <div className="relative">
             <div className="bg-white rounded-2xl p-8 shadow-lg border border-[#E2E8F0]">

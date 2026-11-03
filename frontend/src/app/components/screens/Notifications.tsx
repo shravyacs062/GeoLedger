@@ -1,3 +1,4 @@
+<<<<<<< Updated upstream
 import { useEffect, useState } from 'react';
 import { Layout } from '../Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
@@ -99,6 +100,97 @@ export function Notifications() {
             </Card>
           ))}
         </div>
+=======
+import { useCallback, useEffect, useState } from 'react';
+import { Bell, CheckCircle2, Clock, FileText, RefreshCw } from 'lucide-react';
+import { Layout } from '../Layout';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Button } from '../ui/button';
+import { api } from '../../../services/api';
+
+type Notification = {
+  id: string;
+  title: string;
+  message: string;
+  read: boolean;
+  application_id?: string;
+  created_at: string;
+};
+
+export function Notifications() {
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState('');
+
+  const refresh = useCallback(async () => {
+    setError('');
+    try {
+      setNotifications(await api.notifications.list());
+    } catch (err) {
+      setError((err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Unable to load notifications.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    api.notifications.list().then((items) => {
+      if (active) setNotifications(items);
+    }).catch((err) => {
+      if (active) setError((err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Unable to load notifications.');
+    }).finally(() => {
+      if (active) setLoading(false);
+    });
+    return () => { active = false; };
+  }, []);
+
+  const markRead = async (id: string) => {
+    setBusy(id);
+    try {
+      await api.notifications.markRead(id);
+      setNotifications((current) => current.map((item) => item.id === id ? { ...item, read: true } : item));
+    } catch (err) {
+      setError((err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Unable to update notification.');
+    } finally {
+      setBusy('');
+    }
+  };
+
+  const unreadCount = notifications.filter((item) => !item.read).length;
+  return (
+    <Layout>
+      <div className="mx-auto max-w-4xl space-y-6 p-4 lg:p-8">
+        <div className="flex items-center justify-between gap-4">
+          <div><h1 className="text-3xl font-semibold text-[#0F172A]">Notifications</h1><p className="mt-1 text-[#64748B]">{unreadCount} unread</p></div>
+          <Button variant="outline" onClick={() => void refresh()} disabled={loading}><RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />Refresh</Button>
+        </div>
+        {error && <p role="alert" className="rounded-md bg-red-50 p-3 text-sm text-red-800">{error}</p>}
+        <Card>
+          <CardHeader><CardTitle>Activity updates</CardTitle></CardHeader>
+          <CardContent>
+            {loading ? <p className="py-8 text-center text-sm text-[#64748B]">Loading notifications…</p>
+              : notifications.length === 0 ? <div className="py-10 text-center"><Bell className="mx-auto mb-3 h-9 w-9 text-[#94A3B8]" /><p className="text-sm text-[#64748B]">No notifications yet.</p></div>
+                : <div className="divide-y">
+                  {notifications.map((item) => <article key={item.id} className={`flex flex-col gap-3 py-5 sm:flex-row sm:items-start sm:justify-between ${item.read ? '' : 'bg-[#F0FDFA]'}`}>
+                    <div className="flex gap-3">
+                      {item.title.toLowerCase().includes('document')
+                        ? <FileText className="mt-1 h-5 w-5 shrink-0 text-[#0F766E]" />
+                        : item.title.toLowerCase().includes('approved')
+                          ? <CheckCircle2 className="mt-1 h-5 w-5 shrink-0 text-green-700" />
+                          : <Bell className="mt-1 h-5 w-5 shrink-0 text-[#0F766E]" />}
+                      <div><h2 className="font-medium text-[#0F172A]">{item.title}</h2><p className="mt-1 text-sm text-[#475569]">{item.message}</p>
+                        <p className="mt-2 flex items-center gap-1 text-xs text-[#64748B]"><Clock className="h-3 w-3" />{new Date(item.created_at).toLocaleString()}</p>
+                        {item.application_id && <p className="mt-1 break-all font-mono text-xs text-[#64748B]">Application {item.application_id}</p>}
+                      </div>
+                    </div>
+                    {!item.read && <Button size="sm" variant="outline" disabled={busy === item.id} onClick={() => void markRead(item.id)}>Mark as read</Button>}
+                  </article>)}
+                </div>}
+          </CardContent>
+        </Card>
+>>>>>>> Stashed changes
       </div>
     </Layout>
   );

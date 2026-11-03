@@ -1,10 +1,15 @@
+<<<<<<< Updated upstream
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+=======
+import { useState } from 'react';
+>>>>>>> Stashed changes
 import { Layout } from '../Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
+<<<<<<< Updated upstream
 import { User, Wallet, Mail, Phone, Loader2, AlertCircle } from 'lucide-react';
 import { useWallet } from '../../context/WalletContext';
 import { useAuth } from '../../context/AuthContext';
@@ -50,11 +55,58 @@ export function Profile() {
       setMessage('Profile saved successfully');
     } catch (err: any) {
       setError(err?.response?.data?.message || err.message || 'Failed to save profile');
+=======
+import { User, Wallet, Mail, Shield } from 'lucide-react';
+import { useWallet } from '../../context/useWallet';
+import { requestAccounts, shortenAddress, signWalletMessage } from '../../../services/wallet';
+import { useAuth } from '../../context/useAuth';
+import { api } from '../../../services/api';
+
+export function Profile() {
+  const { address, chainName, balanceEth, isLocalNetwork, isConnected, switchToLocal } = useWallet();
+  const { user, refresh } = useAuth();
+  const [name, setName] = useState(user?.name || '');
+  const [wallet, setWallet] = useState(user?.wallet_address || '');
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const saveProfile = async () => {
+    setSaving(true);
+    setError('');
+    setMessage('');
+    try {
+      await api.auth.updateProfile({ name });
+      await refresh();
+      setMessage('Profile saved.');
+    } catch (err) {
+      setError((err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Unable to save profile.');
     } finally {
       setSaving(false);
     }
   };
+  const linkWallet = async () => {
+    setSaving(true);
+    setError('');
+    setMessage('');
+    try {
+      const connectedAddress = address || await requestAccounts();
+      const challenge = await api.auth.walletChallenge(connectedAddress);
+      const signature = await signWalletMessage(connectedAddress, challenge.message);
+      await api.auth.updateProfile({ wallet_address: connectedAddress, signature });
+      setWallet(connectedAddress);
+      await refresh();
+      setMessage('Wallet ownership verified and linked.');
+    } catch (err) {
+      setError((err as { response?: { data?: { message?: string } } })?.response?.data?.message || (err as Error).message || 'Unable to verify wallet ownership.');
+>>>>>>> Stashed changes
+    } finally {
+      setSaving(false);
+    }
+  };
+<<<<<<< Updated upstream
 
+=======
+>>>>>>> Stashed changes
   return (
     <Layout>
       <div className="p-4 lg:p-8">
@@ -77,11 +129,25 @@ export function Profile() {
                   <div className="w-24 h-24 bg-[#0F766E]/10 rounded-full flex items-center justify-center">
                     <User className="w-12 h-12 text-[#0F766E]" />
                   </div>
+<<<<<<< Updated upstream
                 </div>
 
                 <div>
                   <Label htmlFor="full-name">Full Name</Label>
                   <Input id="full-name" value={fullName} onChange={(e) => setFullName(e.target.value)} className="mt-2 border-[#E2E8F0]" />
+=======
+                  <div>
+                    <p className="text-sm font-medium">{user?.name}</p>
+                    <p className="text-xs text-[#64748B]">{user?.role}</p>
+                  </div>
+                </div>
+
+                <div className="grid sm:grid-cols-2 gap-6">
+                  <div>
+                    <Label htmlFor="first-name">Full name</Label>
+                    <Input id="first-name" value={name} onChange={(event) => setName(event.target.value)} className="mt-2 border-[#E2E8F0]" />
+                  </div>
+>>>>>>> Stashed changes
                 </div>
 
                 <div>
@@ -90,6 +156,7 @@ export function Profile() {
                     <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#64748B]" />
                     <Input id="email" type="email" value={user?.email || ''} disabled className="pl-10 border-[#E2E8F0] bg-[#F8FAFC]" />
                   </div>
+<<<<<<< Updated upstream
                 </div>
 
                 <div>
@@ -134,9 +201,20 @@ export function Profile() {
                       setError(null);
                     }}
                   >
+=======
+                </div>
+
+                <div className="flex gap-3 pt-4">
+                  <Button disabled={saving} onClick={() => void saveProfile()} className="bg-[#0F766E] hover:bg-[#0F766E]/90">
+                    {saving ? 'Saving…' : 'Save Changes'}
+                  </Button>
+                  <Button variant="outline" onClick={() => { setName(user?.name || ''); setMessage(''); setError(''); }} className="border-[#E2E8F0]">
+>>>>>>> Stashed changes
                     Cancel
                   </Button>
                 </div>
+                {message && <p role="status" className="text-sm text-green-700">{message}</p>}
+                {error && <p role="alert" className="text-sm text-red-700">{error}</p>}
               </CardContent>
             </Card>
 
@@ -151,6 +229,7 @@ export function Profile() {
                     <Wallet className="w-6 h-6 text-white" />
                   </div>
                   <div className="flex-1 min-w-0">
+<<<<<<< Updated upstream
                     <p className="font-medium text-[#0F172A]">
                       {isConnected && address ? shortenAddress(address) : 'Not connected'}
                     </p>
@@ -158,6 +237,15 @@ export function Profile() {
                       {chainName}{balanceEth ? ` · ${Number(balanceEth).toFixed(4)} ETH` : ''}
                     </p>
                   </div>
+=======
+                    <p className="text-sm text-[#64748B] mb-1">Linked Wallet Address</p>
+                    <p className="break-all font-mono text-sm text-[#0F172A]">{wallet || 'No wallet linked'}</p>
+                    {address && <p className="mt-1 text-xs text-[#64748B]">MetaMask: {shortenAddress(address)}</p>}
+                  </div>
+                  <Button variant="outline" size="sm" disabled={saving} className="border-[#E2E8F0]" onClick={() => void linkWallet()}>
+                    {wallet ? 'Change wallet' : 'Link MetaMask'}
+                  </Button>
+>>>>>>> Stashed changes
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {!isConnected ? (

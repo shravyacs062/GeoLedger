@@ -24,13 +24,18 @@ def public_verify_property(identifier):
     owner_wallet = prop.get("owner_wallet")
 
     on_chain_data = None
+    on_chain_verified = False
     try:
         bc_service = BlockchainService()
         on_chain_data = bc_service.get_property(survey_number)
-    except Exception:
+        on_chain_verified = bool(on_chain_data.get("exists"))
+    except APIError:
         on_chain_data = {
+<<<<<<< Updated upstream
             "property_id": survey_number,
             "owner": owner_wallet,
+=======
+>>>>>>> Stashed changes
             "exists": True,
             "source": "database_cached",
         }
@@ -58,6 +63,7 @@ def public_verify_property(identifier):
         "property_id": property_id,
         "survey_number": survey_number,
         "status": prop.get("status", "REGISTERED"),
+<<<<<<< Updated upstream
         "property_status": prop.get("status", "REGISTERED"),
         "owner_wallet": owner_wallet,
         "blockchain_owner_wallet": chain_owner,
@@ -77,6 +83,22 @@ def public_verify_property(identifier):
             "This property record and its document cryptographic hashes are "
             "anchored on the GeoLedger prototype ledger."
         ),
+=======
+        "blockchain_registered_at": (
+            on_chain_data.get("registered_at")
+            if on_chain_data and on_chain_data.get("registered_at")
+            else prop.get("created_at")
+        ),
+        "blockchain_tx_hash": prop.get("blockchain_tx_hash"),
+        "blockchain_verified": on_chain_verified,
+        "blockchain_source": on_chain_data.get("source", "blockchain") if on_chain_data else "unavailable",
+        "locality": prop.get("village"),
+        "taluk": prop.get("taluk"),
+        "district": prop.get("district"),
+        "area_sqft": prop.get("area"),
+        "verified_documents": docs_summary,
+        "verification_statement": "This public record summarizes the GeoLedger registry. The blockchain verification indicator reports whether the property was found on the configured chain; document hashes are integrity references and are not independently proof of authenticity.",
+>>>>>>> Stashed changes
     }
 
     return success_response(

@@ -18,7 +18,7 @@ import { Card, CardContent } from '../ui/card';
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { api } from '../../../services/api';
-import { useWallet } from '../../context/WalletContext';
+import { useWallet } from '../../context/useWallet';
 
 export function Applications() {
   const { address } = useWallet();

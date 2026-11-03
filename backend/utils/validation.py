@@ -1,4 +1,6 @@
 import re
+import zipfile
+from io import BytesIO
 from bson import ObjectId
 
 from config import Config
@@ -76,5 +78,31 @@ def validate_document_upload(
     if extension not in Config.ALLOWED_DOCUMENT_EXTENSIONS:
         raise APIError(
             "Unsupported file type",
+            status_code=400
+        )
+
+    content = file.stream.read(16)
+    file.stream.seek(0)
+    signatures = {
+        "pdf": content.startswith(b"%PDF-"),
+        "png": content.startswith(b"\x89PNG\r\n\x1a\n"),
+        "jpg": content.startswith(b"\xff\xd8\xff"),
+        "jpeg": content.startswith(b"\xff\xd8\xff"),
+        "doc": content.startswith(bytes.fromhex("D0CF11E0A1B11AE1")),
+        "docx": False,
+        "txt": b"\x00" not in content,
+    }
+    if extension == "docx":
+        try:
+            with zipfile.ZipFile(file.stream) as archive:
+                signatures["docx"] = "word/document.xml" in archive.namelist()
+        except (zipfile.BadZipFile, OSError):
+            signatures["docx"] = False
+        finally:
+            file.stream.seek(0)
+
+    if not signatures.get(extension, False):
+        raise APIError(
+            "File contents do not match the selected file type",
             status_code=400
         )

@@ -2,10 +2,21 @@ from flask import Blueprint, jsonify, request
 
 from services.blockchain_service import BlockchainService
 from utils.errors import APIError
+<<<<<<< Updated upstream
 from utils.auth_decorators import login_required, admin_required
+=======
+from utils.auth import current_user, require_user
+>>>>>>> Stashed changes
 
 
 blockchain_bp = Blueprint("blockchain", __name__)
+
+@blockchain_bp.before_request
+def enforce_blockchain_permissions():
+    if request.method == "POST":
+        require_user("admin")
+    else:
+        require_user()
 
 
 def get_blockchain_service():
@@ -15,6 +26,7 @@ def get_blockchain_service():
 @blockchain_bp.route("/blockchain/register", methods=["POST"])
 @admin_required
 def register_on_chain():
+<<<<<<< Updated upstream
     data = request.get_json(silent=True) or {}
     property_id = data.get("property_id")
     wallet_address = data.get("wallet_address")
@@ -30,6 +42,9 @@ def register_on_chain():
         "message": "Property registered on blockchain",
         "data": result,
     }), 201
+=======
+    raise APIError("Register properties through an approved application", status_code=403)
+>>>>>>> Stashed changes
 
 
 @blockchain_bp.route("/blockchain/property/<property_id>", methods=["GET"])
@@ -46,6 +61,7 @@ def get_property_on_chain(property_id):
 @blockchain_bp.route("/blockchain/transfer", methods=["POST"])
 @admin_required
 def transfer_on_chain():
+<<<<<<< Updated upstream
     data = request.get_json(silent=True) or {}
     property_id = data.get("property_id")
     new_owner = data.get("new_owner")
@@ -61,6 +77,9 @@ def transfer_on_chain():
         "message": "Property ownership transferred on blockchain",
         "data": result,
     })
+=======
+    raise APIError("Transfer ownership through an approved application", status_code=403)
+>>>>>>> Stashed changes
 
 
 @blockchain_bp.route("/blockchain/transactions", methods=["GET"])
@@ -68,6 +87,17 @@ def transfer_on_chain():
 def get_blockchain_transactions():
     from services.ownership_service import OwnershipService
     history = OwnershipService().get_ownership_history("ALL")
+    user = current_user()
+    if user.get("role") != "admin":
+        wallet = (user.get("wallet_address") or "").lower()
+        history = [
+            item for item in history
+            if wallet and wallet in {
+                (item.get("previous_owner") or "").lower(),
+                (item.get("new_owner") or "").lower(),
+                (item.get("to_address") or "").lower(),
+            }
+        ]
     return jsonify({
         "success": True,
         "message": "Blockchain transactions retrieved successfully",

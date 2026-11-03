@@ -1,126 +1,102 @@
-import { useEffect, useState } from 'react';
+import { FormEvent, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Map, Wallet, Shield, AlertCircle, Loader2, ExternalLink } from 'lucide-react';
+import { Loader2, Map, ShieldCheck } from 'lucide-react';
+import { useAuth } from '../../context/useAuth';
 
-import { Button } from '../ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
-import { useWallet } from '../../context/WalletContext';
-import { shortenAddress } from '../../../services/wallet';
-
-export function Login() {
+function SignInForm({ role }: { role: 'user' | 'admin' }) {
+  const { login, register } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
-  const { connect, isConnecting, error, hasMetaMask, isConnected, address, hasChecked } = useWallet();
-  const [localError, setLocalError] = useState<string | null>(null);
+  const [isRegistering, setIsRegistering] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const [fields, setFields] = useState({ name: '', email: '', password: '' });
+  const destination = (location.state as { from?: string } | null)?.from || (role === 'admin' ? '/admin' : '/dashboard');
 
-  const from = (location.state as { from?: string } | null)?.from || '/dashboard';
-
-  useEffect(() => {
-    if (hasChecked && isConnected) {
-      navigate(from, { replace: true });
-    }
-  }, [from, hasChecked, isConnected, navigate]);
-
-  const handleConnect = async () => {
-    setLocalError(null);
-    if (!hasMetaMask) {
-      window.open('https://metamask.io/download/', '_blank', 'noopener,noreferrer');
-      return;
-    }
+  const submit = async (event: FormEvent) => {
+    event.preventDefault();
+    setBusy(true);
+    setError('');
     try {
-      await connect();
-      navigate(from, { replace: true });
+      if (isRegistering && role === 'user') {
+        await register({
+          name: fields.name,
+          email: fields.email,
+          password: fields.password,
+        });
+      } else {
+        await login(fields.email, fields.password, role);
+      }
+      navigate(destination, { replace: true });
     } catch (err) {
-      setLocalError((err as Error).message);
+      setError((err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Unable to sign in. Please check your details.');
+    } finally {
+      setBusy(false);
     }
   };
 
-  const displayError = localError || error;
-
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-[#0F766E] rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <Map className="w-10 h-10 text-white" />
+    <main className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-4">
+      <section className="w-full max-w-md rounded-2xl border border-[#E2E8F0] bg-white p-8 shadow-lg">
+        <div className="mb-7 text-center">
+          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-[#0F766E] text-white">
+            {role === 'admin' ? <ShieldCheck /> : <Map />}
           </div>
-          <h1 className="text-2xl font-semibold text-[#0F172A]">GeoLedger</h1>
-          <p className="text-[#64748B]">Secure Land Registry</p>
+          <h1 className="text-2xl font-semibold text-[#0F172A]">GeoLedger {role === 'admin' ? 'Admin' : ''}</h1>
+          <p className="mt-1 text-sm text-[#64748B]">
+            {isRegistering ? 'Create your user account' : `Sign in to your ${role} account`}
+          </p>
         </div>
-
-        <Card className="border-[#E2E8F0] shadow-lg">
-          <CardHeader>
-            <CardTitle className="text-[#0F172A]">Connect MetaMask</CardTitle>
-            <CardDescription className="text-[#64748B]">
-              Approve the connection in your MetaMask extension. GeoLedger uses your wallet address as your account.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Button
-              onClick={handleConnect}
-              disabled={isConnecting}
-              className="w-full bg-[#0F766E] hover:bg-[#0F766E]/90 h-14"
-            >
-              {isConnecting ? (
-                <Loader2 className="w-5 h-5 mr-3 animate-spin" />
-              ) : (
-                <Wallet className="w-5 h-5 mr-3" />
-              )}
-              {hasMetaMask ? (isConnecting ? 'Waiting for MetaMask…' : 'Connect with MetaMask') : 'Install MetaMask'}
-            </Button>
-
-            {!hasMetaMask && (
-              <a
-                href="https://metamask.io/download/"
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center justify-center gap-2 text-sm text-[#0F766E] hover:underline"
-              >
-                Get MetaMask for Chrome, Firefox, or Brave
-                <ExternalLink className="w-3.5 h-3.5" />
-              </a>
-            )}
-
-            {isConnected && address && (
-              <p className="text-center text-sm text-[#16A34A] font-mono">
-                Connected {shortenAddress(address)}
-              </p>
-            )}
-
-            {displayError && (
-              <div className="bg-[#FEF2F2] border border-[#FECACA] rounded-lg p-4 flex gap-3">
-                <AlertCircle className="w-5 h-5 text-[#DC2626] flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-[#991B1B]">{displayError}</p>
-              </div>
-            )}
-
-            <div className="bg-[#38BDF8]/10 border border-[#38BDF8]/20 rounded-lg p-4 flex gap-3">
-              <Shield className="w-5 h-5 text-[#38BDF8] flex-shrink-0 mt-0.5" />
-              <div>
-                <p className="text-sm font-medium text-[#0F172A]">What MetaMask will ask</p>
-                <p className="text-xs text-[#64748B] mt-1">
-                  Connect this site, then add or switch to Hardhat Localhost (chain 31337, RPC http://127.0.0.1:8545)
-                  so on-chain registration can reach your local node.
-                </p>
-              </div>
-            </div>
-
-            <div className="bg-[#F8FAFC] border border-[#E2E8F0] rounded-lg p-4 flex gap-3">
-              <AlertCircle className="w-5 h-5 text-[#64748B] flex-shrink-0 mt-0.5" />
-              <p className="text-xs text-[#64748B]">
-                For local demos, import a Hardhat account into MetaMask (account #0 is the default registrar).
-                Your private key never leaves the extension.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
-
-        <div className="text-center mt-6">
-          <Link to="/" className="text-sm text-[#64748B] hover:text-[#0F766E]">
-            ← Back to home
-          </Link>
+        <form className="space-y-4" onSubmit={submit}>
+          {isRegistering && (
+            <label className="block text-sm font-medium text-[#334155]">
+              Full name
+              <input required minLength={2} autoComplete="name" value={fields.name}
+                onChange={(e) => setFields({ ...fields, name: e.target.value })}
+                className="mt-1 w-full rounded-md border border-[#CBD5E1] px-3 py-2" />
+            </label>
+          )}
+          <label className="block text-sm font-medium text-[#334155]">
+            Email
+            <input required type="email" autoComplete="email" value={fields.email}
+              onChange={(e) => setFields({ ...fields, email: e.target.value })}
+              className="mt-1 w-full rounded-md border border-[#CBD5E1] px-3 py-2" />
+          </label>
+          <label className="block text-sm font-medium text-[#334155]">
+            Password
+            <input required type="password" minLength={isRegistering ? 10 : undefined}
+              autoComplete={isRegistering ? 'new-password' : 'current-password'} value={fields.password}
+              onChange={(e) => setFields({ ...fields, password: e.target.value })}
+              className="mt-1 w-full rounded-md border border-[#CBD5E1] px-3 py-2" />
+            {isRegistering && <span className="mt-1 block text-xs text-[#64748B]">Use at least 10 characters.</span>}
+          </label>
+          {error && <p role="alert" className="rounded-md bg-red-50 p-3 text-sm text-red-800">{error}</p>}
+          <button disabled={busy} className="flex w-full items-center justify-center gap-2 rounded-md bg-[#0F766E] px-4 py-3 font-medium text-white hover:bg-[#115E59] disabled:opacity-60">
+            {busy && <Loader2 className="h-4 w-4 animate-spin" />}
+            {isRegistering ? 'Create account' : 'Sign in'}
+          </button>
+        </form>
+        {role === 'user' && (
+          <button type="button" onClick={() => { setError(''); setIsRegistering(!isRegistering); }}
+            className="mt-5 w-full text-sm text-[#0F766E] hover:underline">
+            {isRegistering ? 'Already registered? Sign in' : 'New to GeoLedger? Create an account'}
+          </button>
+        )}
+        <div className="mt-6 flex justify-between text-sm">
+          <Link to="/" className="text-[#64748B] hover:text-[#0F766E]">Back to home</Link>
+          {role === 'user'
+            ? <Link to="/admin/login" className="text-[#64748B] hover:text-[#0F766E]">Admin sign in</Link>
+            : <Link to="/login" className="text-[#64748B] hover:text-[#0F766E]">User sign in</Link>}
         </div>
-      </div>
-    </div>
+      </section>
+    </main>
   );
+}
+
+export function Login() {
+  return <SignInForm role="user" />;
+}
+
+export function AdminLogin() {
+  return <SignInForm role="admin" />;
 }

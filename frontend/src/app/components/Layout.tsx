@@ -4,7 +4,7 @@ import { AlertTriangle } from 'lucide-react';
 import { Sidebar } from './Sidebar';
 import { MobileNav } from './MobileNav';
 import { Button } from './ui/button';
-import { useWallet } from '../context/WalletContext';
+import { useWallet } from '../context/useWallet';
 
 interface LayoutProps {
   children: ReactNode;

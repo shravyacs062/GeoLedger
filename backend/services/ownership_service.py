@@ -59,6 +59,8 @@ class OwnershipService:
             "applicant_user_id": data.get("applicant_user_id"),
             "survey_number": prop.get("survey_number"),
             "property_id": prop.get("property_id") or str(prop.get("_id")),
+            "applicant_user_id": data.get("applicant_user_id"),
+            "applicant_email": data.get("applicant_email"),
             "party_details": {
                 "seller": {
                     "wallet_address": seller_wallet,

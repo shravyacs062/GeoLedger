@@ -1,13 +1,24 @@
+<<<<<<< Updated upstream
 from datetime import datetime, timedelta
 import re
 
 import jwt
 from flask import current_app
 from werkzeug.security import generate_password_hash, check_password_hash
+=======
+import re
+import uuid
+from datetime import datetime
+>>>>>>> Stashed changes
+
+from werkzeug.security import check_password_hash, generate_password_hash
 
 from database.client import get_database
+<<<<<<< Updated upstream
 from models.user import UserModel, ROLES
 from utils.validation import validate_wallet_address
+=======
+>>>>>>> Stashed changes
 from utils.errors import APIError
 from utils.audit import log_audit
 
@@ -15,10 +26,36 @@ from utils.audit import log_audit
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
 
+EMAIL_PATTERN = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+
+
 class AuthService:
     def __init__(self):
-        self.db = get_database()
-        self.collection = self.db.users
+        self.collection = get_database().users
+
+    def bootstrap_admin(self, email: str, password: str) -> None:
+        if not email and not password:
+            return
+        if not email or not EMAIL_PATTERN.fullmatch(email) or len(password) < 12:
+            raise RuntimeError(
+                "ADMIN_EMAIL and an ADMIN_PASSWORD of at least 12 characters are required together"
+            )
+
+        normalized_email = email.lower()
+        existing = self.collection.find_one({"email": normalized_email})
+        if existing and existing.get("role") != "admin":
+            raise RuntimeError("Configured admin email is already assigned to a user account")
+        if existing:
+            return
+
+        self.collection.insert_one({
+            "_id": uuid.uuid4().hex,
+            "email": normalized_email,
+            "name": "GeoLedger Administrator",
+            "password_hash": generate_password_hash(password),
+            "role": "admin",
+            "created_at": datetime.utcnow().isoformat(),
+        })
 
     def _serialize(self, user: dict) -> dict:
         if not user:
@@ -47,6 +84,7 @@ class AuthService:
         )
 
     def register_user(self, data: dict) -> dict:
+<<<<<<< Updated upstream
         """Password-based user registration (role always USER)."""
         email = (data.get("email") or "").strip().lower()
         password = data.get("password") or ""
@@ -229,3 +267,52 @@ class AuthService:
             }
             self.collection.insert_one(doc)
             print(f"Seeded {seed['role']} account: {seed['email']}")
+=======
+        email = (data.get("email") or "").strip().lower()
+        name = (data.get("name") or "").strip()
+        password = data.get("password") or ""
+        wallet = data.get("wallet_address")
+        if not email or not EMAIL_PATTERN.fullmatch(email):
+            raise APIError("A valid email address is required", status_code=400)
+        if len(name) < 2:
+            raise APIError("Name must contain at least 2 characters", status_code=400)
+        if len(password) < 10:
+            raise APIError("Password must contain at least 10 characters", status_code=400)
+        if self.collection.find_one({"email": email}):
+            raise APIError("An account with this email already exists", status_code=409)
+        if wallet:
+            raise APIError("Link a wallet after registration by signing a MetaMask challenge", status_code=400)
+
+        record = {
+            "_id": uuid.uuid4().hex,
+            "email": email,
+            "name": name,
+            "password_hash": generate_password_hash(password),
+            "role": "user",
+            "created_at": datetime.utcnow().isoformat(),
+        }
+        result = self.collection.insert_one(record)
+        record["_id"] = result.inserted_id
+        return self.public_user(record)
+
+    def authenticate(self, email: str, password: str, role: str) -> dict:
+        normalized_email = (email or "").strip().lower()
+        user = self.collection.find_one({"email": normalized_email})
+        if (
+            not user
+            or user.get("role") != role
+            or not check_password_hash(user.get("password_hash", ""), password or "")
+        ):
+            raise APIError("Invalid email or password", status_code=401)
+        return self.public_user(user)
+
+    @staticmethod
+    def public_user(user: dict) -> dict:
+        return {
+            "id": str(user.get("_id", "")),
+            "email": user["email"],
+            "name": user.get("name", ""),
+            "role": user["role"],
+            "wallet_address": user.get("wallet_address"),
+        }
+>>>>>>> Stashed changes

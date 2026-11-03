@@ -157,6 +157,9 @@ class SQLiteCollection:
                     if "$set" in update_ops:
                         for k, v in update_ops["$set"].items():
                             doc[k] = _serialize_val(v)
+                    if "$unset" in update_ops:
+                        for k in update_ops["$unset"]:
+                            doc.pop(k, None)
                     if "$addToSet" in update_ops:
                         for k, v in update_ops["$addToSet"].items():
                             curr_list = doc.setdefault(k, [])

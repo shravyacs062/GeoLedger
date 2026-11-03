@@ -44,6 +44,7 @@ Message: `"GeoLedger backend is running"`.
 
 ## Auth
 
+<<<<<<< Updated upstream
 ### `POST /auth/register`
 
 **Password registration**
@@ -93,6 +94,39 @@ Pending counts, flagged docs, recent transactions, user count.
 ### `GET /dashboard/user` — login required
 
 Properties and applications for the current user/wallet.
+=======
+Authentication uses an HTTP-only, same-site Flask session cookie. Frontend API
+requests must include credentials. `user` and `admin` roles are enforced by the
+backend; registering with a role field never grants administrator access.
+
+### `POST /auth/register`
+
+| Field | Type | Required |
+|---|---|---|
+| `name` | string | yes |
+| `email` | string | yes |
+| `password` | string | yes (10+ characters) |
+
+**201** — user account created and signed in. **409** — email already registered.
+
+### `POST /auth/login`
+
+Fields: `email`, `password`, and optional `role` (`user` by default, or `admin`).
+An admin login only succeeds for an existing provisioned administrator.
+
+### `GET /auth/me` · `POST /auth/logout` · `PATCH /auth/profile`
+
+Return the current account, end its session, or update the user's name. Administrators
+are provisioned using `ADMIN_EMAIL` and `ADMIN_PASSWORD`; no public admin registration
+exists.
+
+### Wallet ownership proof
+
+1. `POST /auth/wallet-challenge` with `wallet_address` returns a one-time message.
+2. `PATCH /auth/profile` with `wallet_address` and the wallet's `personal_sign`
+   `signature` verifies and links the address. Merely knowing an address is not proof
+   of control.
+>>>>>>> Stashed changes
 
 ---
 
@@ -125,7 +159,13 @@ Prefix: `/applications`.
 | `applicant_wallet` / `wallet_address` | yes (or taken from JWT wallet) |
 | party / inheritance fields | see workflows |
 
+<<<<<<< Updated upstream
 Aliases: `REGISTRATION`→`NEW_REGISTRATION`, `TRANSFER`→`OWNERSHIP_TRANSFER`, `INHERITANCE`→`INHERITANCE_TRANSFER`.
+=======
+Requires a user session and a wallet linked by signature. A conflicting active
+application for the survey, an already-registered survey for a new registration, or
+a non-owner transfer request is rejected.
+>>>>>>> Stashed changes
 
 **409** active duplicate survey+type. Transfer/inheritance require an existing property.
 
@@ -254,4 +294,19 @@ Prefer application approve for workflow-gated chain writes.
 
 ### `GET /verify/property/<identifier>` — public
 
+<<<<<<< Updated upstream
 Cadastral fields, owner wallets, document hashes, blockchain match when available. No private file contents.
+=======
+Public, unauthenticated, read-only record lookup by `survey_number`, `property_id`, or `_id`. Returns cadastral fields, document integrity hashes and review statuses, and `blockchain_tx_hash`; it does not return owner wallet addresses or private document contents.
+
+`blockchain_verified` is true only when the property is found on the configured chain.
+`blockchain_source` is `blockchain` when the node was queried, or `database_cached`
+when the chain is unavailable. The cached registry record is still returned in the
+latter case. Document hashes establish integrity relative to the stored baseline;
+they do not establish that a source document is legally authentic.
+
+The frontend's unauthenticated QR destination is
+`/verify/property/<survey_number>`.
+
+**404** if the parcel is not in the registry.
+>>>>>>> Stashed changes

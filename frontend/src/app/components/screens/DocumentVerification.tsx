@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+<<<<<<< Updated upstream
 import { Layout } from '../Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Button } from '../ui/button';
@@ -15,6 +16,12 @@ import {
   Loader2,
   Shield,
 } from 'lucide-react';
+=======
+import { AlertCircle, CheckCircle2, FileText, Loader2, ShieldAlert } from 'lucide-react';
+import { Layout } from '../Layout';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
+import { Button } from '../ui/button';
+>>>>>>> Stashed changes
 import { api } from '../../../services/api';
 import { useAuth } from '../../context/AuthContext';
 
@@ -29,7 +36,26 @@ const STATUS_META: Record<string, { label: string; className: string; icon: type
   PENDING: { label: 'Pending Verification', className: 'bg-[#FEF3C7] text-[#B45309]', icon: Clock },
 };
 
+type Application = { id: string; _id?: string; survey_number: string; application_type: string };
+type Document = {
+  id: string;
+  document_type: string;
+  filename: string;
+  verification_status: string;
+  verification_notes?: string;
+  document_hash: string;
+  uploaded_at: string;
+};
+
+const statusLabel: Record<string, string> = {
+  PENDING: 'Pending verification',
+  REQUIRES_MANUAL_REVIEW: 'Requires manual review',
+  VERIFIED: 'Verified by registrar',
+  REJECTED: 'Verification failed',
+};
+
 export function DocumentVerification() {
+<<<<<<< Updated upstream
   const { isAdmin } = useAuth();
   const [applicationId, setApplicationId] = useState('');
   const [applications, setApplications] = useState<any[]>([]);
@@ -90,11 +116,64 @@ export function DocumentVerification() {
       setError(err?.response?.data?.message || err.message || 'Review failed');
     } finally {
       setActionLoading(false);
+=======
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const [selectedId, setSelectedId] = useState('');
+  const [busy, setBusy] = useState('');
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let active = true;
+    api.applications.list().then(async (apps) => {
+      if (!active) return;
+      setApplications(apps);
+      if (apps.length) {
+        const appId = apps[0].id || apps[0]._id;
+        setSelectedId(appId);
+        const docs = await api.documents.getByApp(appId);
+        if (active) setDocuments(docs);
+      }
+    }).catch((err) => {
+      if (active) setError((err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Unable to load your documents.');
+    }).finally(() => {
+      if (active) setLoading(false);
+    });
+    return () => { active = false; };
+  }, []);
+
+  const selectApplication = async (id: string) => {
+    setSelectedId(id);
+    setError('');
+    try {
+      setDocuments(await api.documents.getByApp(id));
+    } catch (err) {
+      setError((err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Unable to load documents.');
     }
   };
 
+  const verify = async (documentId: string) => {
+    setBusy(documentId);
+    setError('');
+    try {
+      const result = await api.verification.verify(documentId);
+      setDocuments((current) => current.map((doc) => doc.id === documentId
+        ? { ...doc, verification_status: result.verification_status, verification_notes: result.message || (result.matches ? 'File integrity passed; registrar review is still required.' : 'File hash mismatch detected.') }
+        : doc));
+    } catch (err) {
+      setError((err as { response?: { data?: { message?: string } } })?.response?.data?.message || 'Document integrity check failed.');
+    } finally {
+      setBusy('');
+>>>>>>> Stashed changes
+    }
+  };
+
+  const selectedApplication = applications.find((app) => (app.id || app._id) === selectedId);
+
   return (
     <Layout>
+<<<<<<< Updated upstream
       <div className="p-4 lg:p-8 space-y-6">
         <div>
           <h1 className="text-3xl font-semibold text-[#0F172A]">Document Verification</h1>
@@ -266,6 +345,66 @@ export function DocumentVerification() {
             );
           })}
         </div>
+=======
+      <div className="mx-auto max-w-5xl space-y-6 p-4 lg:p-8">
+        <div>
+          <h1 className="text-3xl font-semibold text-[#0F172A]">Document verification</h1>
+          <p className="mt-2 text-[#64748B]">Check that stored files still match their upload-time SHA-256 hash and track registrar review.</p>
+        </div>
+        <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+          A matching hash proves file integrity only. It does not confirm that the original document is genuine; an authorized registrar must review authenticity.
+        </div>
+        {error && <p role="alert" className="rounded-md bg-red-50 p-3 text-sm text-red-800">{error}</p>}
+        <Card>
+          <CardHeader>
+            <CardTitle>Application documents</CardTitle>
+            <CardDescription>Select an application to review its submitted files.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {loading ? <div className="flex items-center gap-2 py-6 text-sm text-[#64748B]"><Loader2 className="h-4 w-4 animate-spin" />Loading documents…</div>
+              : applications.length === 0 ? <div className="py-6 text-center">
+                <p className="text-sm text-[#64748B]">You have no applications yet.</p>
+                <Link to="/applications/new"><Button className="mt-4 bg-[#0F766E]">Start an application</Button></Link>
+              </div> : <>
+                <label className="block max-w-xl text-sm font-medium text-[#334155]">
+                  Application
+                  <select className="mt-1 block w-full rounded-md border border-[#CBD5E1] bg-white px-3 py-2"
+                    value={selectedId} onChange={(event) => void selectApplication(event.target.value)}>
+                    {applications.map((app) => <option key={app.id || app._id} value={app.id || app._id}>
+                      {app.survey_number} · {app.application_type.replaceAll('_', ' ')}
+                    </option>)}
+                  </select>
+                </label>
+                {documents.length === 0 ? <p className="py-6 text-sm text-[#64748B]">No documents uploaded for this application.</p>
+                  : <div className="divide-y">
+                    {documents.map((doc) => <article key={doc.id} className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
+                      <div className="flex min-w-0 items-start gap-3">
+                        <FileText className="mt-1 h-5 w-5 shrink-0 text-[#0F766E]" />
+                        <div className="min-w-0">
+                          <p className="truncate font-medium text-[#0F172A]">{doc.document_type.replaceAll('_', ' ')}</p>
+                          <p className="truncate text-sm text-[#64748B]">{doc.filename}</p>
+                          <p className="mt-1 break-all font-mono text-xs text-[#64748B]">SHA-256: {doc.document_hash}</p>
+                          {doc.verification_notes && <p className="mt-1 text-xs text-[#64748B]">{doc.verification_notes}</p>}
+                        </div>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-3">
+                        <span className="flex items-center gap-1 text-sm">
+                          {doc.verification_status === 'VERIFIED' ? <CheckCircle2 className="h-4 w-4 text-green-700" />
+                            : doc.verification_status === 'REJECTED' ? <ShieldAlert className="h-4 w-4 text-red-700" />
+                              : <AlertCircle className="h-4 w-4 text-amber-700" />}
+                          {statusLabel[doc.verification_status] || doc.verification_status}
+                        </span>
+                        <Button variant="outline" disabled={busy === doc.id || doc.verification_status === 'VERIFIED'} onClick={() => void verify(doc.id)}>
+                          {busy === doc.id ? 'Checking…' : 'Check integrity'}
+                        </Button>
+                      </div>
+                    </article>)}
+                  </div>}
+                {selectedApplication && <Link className="inline-block text-sm text-[#0F766E] underline" to={`/applications/${selectedId}`}>View application details</Link>}
+              </>}
+          </CardContent>
+        </Card>
+>>>>>>> Stashed changes
       </div>
     </Layout>
   );

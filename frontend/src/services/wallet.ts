@@ -64,11 +64,27 @@ export async function requestAccounts(): Promise<string> {
   if (!ethereum) {
     throw new Error('MetaMask is not installed. Install it from metamask.io and refresh this page.');
   }
+
   const accounts = (await ethereum.request({ method: 'eth_requestAccounts' })) as string[];
   if (!accounts?.length) {
     throw new Error('No account was returned from MetaMask.');
   }
   return accounts[0];
+}
+
+export async function signWalletMessage(address: string, message: string): Promise<string> {
+  const ethereum = getEthereum();
+  if (!ethereum) {
+    throw new Error('MetaMask is not installed.');
+  }
+  const signature = await ethereum.request({
+    method: 'personal_sign',
+    params: [message, address],
+  });
+  if (typeof signature !== 'string') {
+    throw new Error('MetaMask returned an invalid signature.');
+  }
+  return signature;
 }
 
 export async function getAccounts(): Promise<string[]> {

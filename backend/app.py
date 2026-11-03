@@ -1,6 +1,7 @@
 from flask import Flask
 from flask_cors import CORS
 from dotenv import load_dotenv
+import os
 
 from config import Config
 from database.client import init_db, close_db
@@ -20,10 +21,22 @@ def create_app(testing=False):
     if testing:
         app.config["TESTING"] = True
 
-    CORS(app)
+    if not testing and app.config["SECRET_KEY"] == "change-me":
+        raise RuntimeError("Set a strong SECRET_KEY before starting GeoLedger")
+
+    CORS(
+        app,
+        supports_credentials=True,
+        origins=app.config["FRONTEND_ORIGINS"],
+    )
 
     # Initialize database
     init_db(app)
+    from services.auth_service import AuthService
+    AuthService().bootstrap_admin(
+        app.config["ADMIN_EMAIL"],
+        app.config["ADMIN_PASSWORD"],
+    )
 
     # Register API routes
     register_blueprints(app)
@@ -44,6 +57,9 @@ def create_app(testing=False):
 
     @app.errorhandler(Exception)
     def handle_unexpected_error(error):
+        from werkzeug.exceptions import HTTPException
+        if isinstance(error, HTTPException):
+            return error_response(error.description, status_code=error.code)
 
         if app.config.get("DEBUG"):
             details = str(error)
@@ -61,6 +77,8 @@ def create_app(testing=False):
 
 if __name__ == "__main__":
 
+    if os.getenv("SECRET_KEY", "change-me") == "change-me":
+        raise RuntimeError("Set a strong SECRET_KEY in backend/.env before starting GeoLedger")
     application = create_app()
 
     try:

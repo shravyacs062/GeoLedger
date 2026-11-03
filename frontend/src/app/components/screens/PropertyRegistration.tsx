@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Layout } from '../Layout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
@@ -8,35 +8,33 @@ import { Label } from '../ui/label';
 import { Textarea } from '../ui/textarea';
 import { Upload, FileText, CheckCircle2, AlertCircle } from 'lucide-react';
 import { api } from '../../../services/api';
-import { useWallet } from '../../context/WalletContext';
+import { useWallet } from '../../context/useWallet';
+import { useAuth } from '../../context/useAuth';
 
 export function PropertyRegistration() {
   const navigate = useNavigate();
   const { address } = useWallet();
+  const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+  const [applicationType, setApplicationType] = useState<'NEW_REGISTRATION' | 'INHERITANCE_TRANSFER'>('NEW_REGISTRATION');
 
   const [formData, setFormData] = useState({
-    surveyNumber: 'SN-2023-4521',
+    surveyNumber: '',
     propertyId: '',
-    location: 'Block A, Survey 123, District North',
-    area: '2500',
-    district: 'Mysuru',
-    latitude: '12.1812',
-    longitude: '76.6852',
-    ownerName: 'John Doe',
-    governmentId: 'AADHAAR-8921-4821',
-    contactNumber: '+91 98765 43210',
-    email: 'john.doe@example.com',
-    walletAddress: address || '',
-    residentialAddress: 'House 42, 3rd Cross, Bengaluru',
+    location: '',
+    area: '',
+    district: '',
+    latitude: '',
+    longitude: '',
+    ownerName: user?.name || '',
+    governmentId: '',
+    contactNumber: '',
+    email: user?.email || '',
+    walletAddress: address || user?.wallet_address || '',
+    residentialAddress: '',
   });
-
-  useEffect(() => {
-    if (address) {
-      setFormData((prev) => ({ ...prev, walletAddress: address }));
-    }
-  }, [address]);
 
   const [files, setFiles] = useState<{ [key: string]: File }>({});
 
@@ -51,6 +49,7 @@ export function PropertyRegistration() {
   const handleSubmit = async () => {
     try {
       setSubmitting(true);
+<<<<<<< Updated upstream
       const missing = documents.filter((d) => d.required && !files[d.name]);
       if (missing.length) {
         throw new Error(`Upload required documents: ${missing.map((d) => d.label).join(', ')}`);
@@ -59,10 +58,34 @@ export function PropertyRegistration() {
         throw new Error('Wallet address is required. Connect MetaMask or enter it in Owner Information.');
       }
 
+=======
+      setError('');
+      const requiredFiles = applicationType === 'NEW_REGISTRATION'
+        ? ['SALE_DEED', 'ID_PROOF', 'MUTATION_CERTIFICATE']
+        : ['DEATH_CERTIFICATE', 'LEGAL_HEIR_CERTIFICATE', 'FAMILY_TREE', 'NOC_FROM_LEGAL_HEIRS', 'MUTATION_CERTIFICATE', 'OWNERSHIP_PROOF', 'NEW_OWNER_ID_PROOF'];
+      const missingFiles = requiredFiles.filter((type) => !files[type]);
+      if (!formData.surveyNumber.trim() || !formData.location.trim() || !formData.area || Number(formData.area) <= 0) {
+        setError('Enter a survey number, location, and positive land area.');
+        return;
+      }
+      if (!formData.ownerName.trim() || !formData.email.trim()) {
+        setError('Enter the applicant name and email address.');
+        return;
+      }
+      if (!/^0x[a-fA-F0-9]{40}$/.test(address || formData.walletAddress)) {
+        setError('Link a valid Ethereum wallet in your profile before submitting.');
+        return;
+      }
+      if (missingFiles.length) {
+        setError(`Upload all required documents before submitting: ${missingFiles.join(', ')}`);
+        return;
+      }
+>>>>>>> Stashed changes
       const app = await api.applications.create({
         survey_number: formData.surveyNumber,
-        application_type: 'NEW_REGISTRATION',
+        application_type: applicationType,
         applicant_name: formData.ownerName,
+        applicant_email: formData.email,
         applicant_id: formData.governmentId,
         applicant_wallet: address || formData.walletAddress,
         wallet_address: address || formData.walletAddress,
@@ -76,22 +99,28 @@ export function PropertyRegistration() {
           residential_address: formData.residentialAddress,
         },
         property_details: {
-          area: Number(formData.area) || 2500,
+          area: Number(formData.area),
+          land_type: 'Residential',
           location: formData.location,
-          village: formData.location.split(',')[0] || 'Thandavapura',
+          village: formData.location.split(',')[0],
           district: formData.district,
-          taluk: 'Nanjangud',
+          taluk: '',
           coordinates: { lat: formData.latitude, lon: formData.longitude },
         },
       });
 
       const appId = app._id || app.application_id || app.id;
+<<<<<<< Updated upstream
       for (const [docType, file] of Object.entries(files)) {
         await api.documents.upload(appId, file, docType);
+=======
+      for (const docType of requiredFiles) {
+        await api.documents.upload(appId, files[docType], docType);
+>>>>>>> Stashed changes
       }
       navigate(`/applications/${appId}`);
-    } catch (err: any) {
-      alert(err?.response?.data?.message || err.message || 'Submission failed');
+    } catch (err) {
+      setError((err as { response?: { data?: { message?: string } } })?.response?.data?.message || (err as Error).message || 'Submission failed');
     } finally {
       setSubmitting(false);
     }
@@ -105,9 +134,16 @@ export function PropertyRegistration() {
   ];
 
   const documents = [
+<<<<<<< Updated upstream
     { name: 'SALE_DEED', label: 'Sale Deed', required: true },
     { name: 'ID_PROOF', label: 'Owner ID Proof', required: true },
     { name: 'MUTATION_CERTIFICATE', label: 'Mutation Certificate', required: true },
+=======
+    ...(applicationType === 'NEW_REGISTRATION'
+      ? ['SALE_DEED', 'ID_PROOF', 'MUTATION_CERTIFICATE']
+      : ['DEATH_CERTIFICATE', 'LEGAL_HEIR_CERTIFICATE', 'FAMILY_TREE', 'NOC_FROM_LEGAL_HEIRS', 'MUTATION_CERTIFICATE', 'OWNERSHIP_PROOF', 'NEW_OWNER_ID_PROOF'])
+      .map((name) => ({ name, required: true })),
+>>>>>>> Stashed changes
   ];
 
   return (
@@ -115,8 +151,20 @@ export function PropertyRegistration() {
       <div className="p-4 lg:p-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-semibold text-[#0F172A] mb-2">Register New Property</h1>
-          <p className="text-[#64748B]">Complete the form to register a new land parcel on the blockchain</p>
+          <h1 className="text-3xl font-semibold text-[#0F172A] mb-2">{applicationType === 'NEW_REGISTRATION' ? 'Register New Property' : 'Apply for Inheritance Transfer'}</h1>
+          <p className="text-[#64748B]">Submit an application for registrar review. Blockchain registration happens only after approval.</p>
+          <label className="mt-4 block max-w-sm text-sm font-medium text-[#334155]">
+            Application workflow
+            <select className="mt-1 block w-full rounded-md border border-[#CBD5E1] bg-white px-3 py-2"
+              value={applicationType} onChange={(event) => {
+                setApplicationType(event.target.value as typeof applicationType);
+                setFiles({});
+                setError('');
+              }}>
+              <option value="NEW_REGISTRATION">New land registration</option>
+              <option value="INHERITANCE_TRANSFER">Inheritance transfer</option>
+            </select>
+          </label>
         </div>
 
         {/* Progress Steps */}
@@ -371,9 +419,9 @@ export function PropertyRegistration() {
                           />
                           <Upload className="w-8 h-8 text-[#64748B] mx-auto mb-2" />
                           <p className="text-sm text-[#0F172A] mb-1">
-                            {files[doc.name] ? files[doc.name].name : 'Click to upload or drag and drop'}
+                            {files[doc.name] ? files[doc.name].name : `Upload ${doc.name.replaceAll('_', ' ')}`}
                           </p>
-                          <p className="text-xs text-[#64748B]">PDF, JPEG, PNG (max 10MB)</p>
+                          <p className="text-xs text-[#64748B]">PDF, JPEG, PNG (max 16MB)</p>
                         </label>
                       </div>
                     ))}
@@ -424,7 +472,7 @@ export function PropertyRegistration() {
                       <div>
                         <p className="text-sm font-medium text-[#0F172A]">Blockchain Transaction</p>
                         <p className="text-xs text-[#64748B] mt-1">
-                          Submitting this form will create an immutable record on the blockchain. Please review all information carefully.
+                          Your application and documents will be reviewed first. Blockchain registration happens only after registrar approval.
                         </p>
                       </div>
                     </div>
@@ -433,6 +481,7 @@ export function PropertyRegistration() {
 
                 {/* Navigation Buttons */}
                 <div className="flex flex-col sm:flex-row gap-4 mt-8 pt-6 border-t border-[#E2E8F0]">
+                  {error && <p role="alert" className="w-full text-sm text-red-700">{error}</p>}
                   {currentStep > 1 && (
                     <Button
                       variant="outline"
