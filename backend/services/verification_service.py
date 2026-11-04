@@ -13,7 +13,7 @@ class VerificationService:
         self.documents = self.db.documents
         self.applications = self.db.applications
 
-    def review_document(self, document_id: str, status: str, remarks: str = None) -> dict:
+    def review_document(self, document_id: str, status: str, remarks: str = None, reviewer: dict = None) -> dict:
         status = (status or "").upper()
         # Normalize display aliases from complete.md
         aliases = {
@@ -37,6 +37,23 @@ class VerificationService:
         if not doc:
             raise APIError("Document not found", status_code=404)
 
+        file_path = doc.get("storage_location")
+        if not file_path or not os.path.exists(file_path):
+            raise APIError("Document file is missing and cannot be verified", status_code=409)
+        actual_hash = self._hash_file(file_path)
+        if actual_hash != doc.get("document_hash"):
+            self.documents.update_one(
+                {"_id": document_id},
+                {"$set": {
+                    "verification_status": "REJECTED",
+                    "verification_notes": "File integrity check failed; the file no longer matches its uploaded hash",
+                    "verified_at": datetime.utcnow().isoformat(),
+                }},
+            )
+            raise APIError("File integrity check failed; document was rejected", status_code=409)
+
+        if status == "VERIFIED" and not remarks:
+            remarks = "Reviewed and approved by an authorized Admin"
         now = datetime.utcnow().isoformat()
         self.documents.update_one(
             {"_id": document_id},
@@ -45,6 +62,7 @@ class VerificationService:
                     "verification_status": status,
                     "verification_notes": remarks or f"Marked {status} by authorized reviewer",
                     "verified_at": now,
+                    "reviewed_by": (reviewer or {}).get("email"),
                 }
             },
         )
@@ -53,6 +71,15 @@ class VerificationService:
         app_id = doc.get("application_id")
         if app_id:
             self._update_application_verification_state(app_id)
+            app = self.applications.find_one({"_id": app_id})
+            if app and app.get("applicant_user_id"):
+                from services.notification_service import NotificationService
+                NotificationService().create(
+                    "Document review completed",
+                    f"{doc.get('document_type', 'Document')} was marked {status}. {remarks or ''}".strip(),
+                    user_id=app["applicant_user_id"],
+                    application_id=app_id,
+                )
 
         updated_doc = self.documents.find_one({"_id": document_id})
         return {
@@ -78,18 +105,15 @@ class VerificationService:
                 "message": "File not found on server",
             }
 
-        # Compute SHA-256
-        sha256 = hashlib.sha256()
-        with open(file_path, "rb") as f:
-            for chunk in iter(lambda: f.read(8192), b""):
-                sha256.update(chunk)
-        calc_hash = sha256.hexdigest()
-
+        calc_hash = self._hash_file(file_path)
         hash_matches = calc_hash == stored_hash
-        # Integrity-only auto check: mismatch → failed; match keeps pending for manual authenticity review
         if hash_matches:
-            status = doc.get("verification_status") if doc.get("verification_status") in ("VERIFIED", "REQUIRES_MANUAL_REVIEW") else "PENDING"
-            notes = "SHA-256 integrity check passed (authenticity still requires manual or authority review)"
+            status = (
+                "VERIFIED"
+                if doc.get("verification_status") == "VERIFIED"
+                else "REQUIRES_MANUAL_REVIEW"
+            )
+            notes = "File integrity passed; authenticity requires Admin review"
         else:
             status = "REJECTED"
             notes = "Hash mismatch detected — file may have been tampered with"
@@ -101,8 +125,8 @@ class VerificationService:
                 "$set": {
                     "verification_status": status,
                     "verification_notes": notes,
-                    "verified_at": now if status == "VERIFIED" else doc.get("verified_at"),
                     "integrity_checked_at": now,
+                    **({"verified_at": now} if status == "REJECTED" else {}),
                 }
             },
         )
@@ -119,6 +143,14 @@ class VerificationService:
             "matches": hash_matches,
             "verified_at": now,
         }
+
+    @staticmethod
+    def _hash_file(file_path: str) -> str:
+        sha256 = hashlib.sha256()
+        with open(file_path, "rb") as file:
+            for chunk in iter(lambda: file.read(8192), b""):
+                sha256.update(chunk)
+        return sha256.hexdigest()
 
     def _update_application_verification_state(self, application_id: str):
         app = self.applications.find_one({"_id": application_id})

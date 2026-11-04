@@ -31,7 +31,7 @@ React 19 + TypeScript, Vite, Tailwind CSS v4, Radix/shadcn-style UI, Leaflet/rea
 
 The live application lives under `frontend/src/app/`. `frontend/src/App.tsx` re-exports that router. A second, older copy of some screens exists under `frontend/src/components/` and is not what `main.tsx` mounts.
 
-The browser talks to the Flask API for registry data. Primary identity is email/password with JWT (`AuthProvider`). Separate portals exist for citizens (`/login`) and admins (`/admin/login`). MetaMask remains optional for linking a wallet on the Profile screen. Contract writes still go through the backend registrar key, not the user’s MetaMask signature.
+The browser talks to the Flask API for registry data. Primary identity is email/password with a Flask session (`AuthProvider`). Separate portals exist for users (`/login`) and admins (`/admin/login`). MetaMask remains optional for linking a wallet on the Profile screen. Contract writes still go through the backend Admin signing key, not the user’s MetaMask signature.
 
 ### Backend (`backend/`)
 
@@ -49,7 +49,7 @@ Blockchain writes go through `BlockchainService`, which uses Web3.py against the
 
 ### Blockchain (`blockchain/`)
 
-Hardhat 3 workspace. Solidity `^0.8.20`. The contract stores `propertyId → { owner, registeredAt, exists }`. The deployer is the `registrar` and may transfer any parcel. Current owners may also transfer their own parcels.
+Hardhat 3 workspace. Solidity `^0.8.20`. The contract stores `propertyId → { owner, registeredAt, exists }`. The deployer is recorded in the contract's `registrar` field and has Admin-level transfer authority. Current owners may also transfer their own parcels.
 
 `deploy-local.js` deploys the compiled artifact, copies the ABI into the backend, and writes `BLOCKCHAIN_CONTRACT_ADDRESS` into `backend/.env` if that file exists.
 
@@ -70,7 +70,7 @@ Collections: `users`, `properties`, `applications`, `documents`, `transactions`,
 - JWT auth with role-based decorators (`login_required`, `admin_required`) on protected routes.
 - Separate Admin and User login portals; approve/reject/review/blockchain write require admin.
 - Documents are hashed with SHA-256 at upload; OCR/heuristic extraction and cross-checks run automatically; admins mark authenticity.
-- On-chain writes are signed by the backend's `BLOCKCHAIN_PRIVATE_KEY` (registrar), only after approved applications (or explicit admin blockchain routes).
+- On-chain writes are signed by the backend's `BLOCKCHAIN_PRIVATE_KEY`, only after approved applications (or explicit Admin blockchain routes).
 - CORS is open for local development. Change secrets and tighten CORS before any production deploy.
 
 Feature documentation: [features/README.md](./features/README.md).

@@ -1,4 +1,6 @@
 from datetime import datetime
+import uuid
+from bson import ObjectId
 
 from database.client import get_database
 from services.blockchain_service import BlockchainService
@@ -60,11 +62,18 @@ class ApplicationService:
         survey_number = validate_survey_number(survey_number)
 
         property_id = data.get("property_id") or survey_number
+        party_details = data.get("party_details") or {}
+        if application_type == "OWNERSHIP_TRANSFER":
+            buyer_details = party_details.get("buyer") or {}
+            buyer_wallet = validate_wallet_address(
+                buyer_details.get("wallet_address") or data.get("buyer_wallet") or ""
+            )
+            if buyer_wallet.lower() == applicant_wallet.lower():
+                raise APIError("New owner wallet must differ from the current owner", status_code=400)
 
         existing_application = self.collection.find_one(
             {
                 "survey_number": survey_number,
-                "application_type": application_type,
                 "status": {
                     "$nin": [
                         "REJECTED",
@@ -79,6 +88,12 @@ class ApplicationService:
                 "An active application already exists for this survey number",
                 status_code=409,
             )
+
+        existing_property = self.db.properties.find_one({"survey_number": survey_number})
+        if application_type == "NEW_REGISTRATION" and existing_property:
+            raise APIError("A property is already registered for this survey number", status_code=409)
+        if application_type in ("OWNERSHIP_TRANSFER", "INHERITANCE_TRANSFER") and not existing_property:
+            raise APIError("A registered property is required for transfer or inheritance", status_code=404)
 
         required_documents = DOCUMENT_REQUIREMENTS.get(
             application_type,
@@ -140,9 +155,11 @@ class ApplicationService:
 
         property_details = data.get("property_details") or {}
         application_doc = {
+            "_id": uuid.uuid4().hex,
             "application_type": application_type,
             "applicant_wallet": applicant_wallet,
             "applicant_user_id": data.get("applicant_user_id"),
+            "applicant_email": data.get("applicant_email"),
             "survey_number": survey_number,
             "property_id": property_id,
             "status": "SUBMITTED",
@@ -164,7 +181,6 @@ class ApplicationService:
 
         result = self.collection.insert_one(application_doc)
         application_doc["_id"] = result.inserted_id
-
         create_notification(
             recipient_id=data.get("applicant_user_id"),
             recipient_wallet=applicant_wallet,
@@ -184,7 +200,6 @@ class ApplicationService:
             "application_type": application_type,
             "survey_number": survey_number,
         })
-
         return self._serialize_application(application_doc)
 
     # ---------------------------------------------------------
@@ -246,6 +261,8 @@ class ApplicationService:
                 status_code=400,
             )
 
+        if status in ("COMPLETED", "BLOCKCHAIN_PENDING", "APPROVED"):
+            raise APIError("Use the approval workflow to approve or anchor an application", status_code=403)
         update_fields = {
             "status": status,
             "updated_at": datetime.utcnow().isoformat(),
@@ -265,7 +282,15 @@ class ApplicationService:
         if result.matched_count == 0:
             raise APIError("Application not found", status_code=404)
 
-        return self.get_application(application_id)
+        application = self.get_application(application_id)
+        from services.notification_service import NotificationService
+        NotificationService().create(
+            "Application status updated",
+            f"Your application for survey {application.get('survey_number')} is now {status}. {rejection_reason or ''}".strip(),
+            user_id=application.get("applicant_user_id"),
+            application_id=application_id,
+        )
+        return application
 
     # ---------------------------------------------------------
     # ADD SUBMITTED DOCUMENT
@@ -470,6 +495,11 @@ class ApplicationService:
                         "geojson_reference": survey_number,
                         "coordinates": details.get("coordinates"),
                         "status": "REGISTERED",
+                        **{
+                            key: application.get("property_details", {}).get(key)
+                            for key in ("land_type", "area", "village", "taluk", "district", "state", "geojson_reference", "boundary")
+                            if application.get("property_details", {}).get(key) is not None
+                        },
                         "blockchain_tx_hash": blockchain_result.get("transaction_hash"),
                         "blockchain_block_number": blockchain_result.get("block_number"),
                         "created_at": datetime.utcnow().isoformat(),
@@ -516,14 +546,6 @@ class ApplicationService:
                 {"_id": application_id},
                 {"$set": update_data},
             )
-
-            # Generate QR for newly registered properties
-            if app_type in ("NEW_REGISTRATION", "REGISTRATION"):
-                try:
-                    from services.qr_service import QRService
-                    QRService().generate_for_property(survey_number=survey_number)
-                except Exception:
-                    pass
 
             create_notification(
                 recipient_id=application.get("applicant_user_id"),
@@ -644,8 +666,18 @@ class ApplicationService:
     def _serialize_application(self, application: dict) -> dict:
         if not application:
             return None
-        app = dict(application)
+        app = self._serialize_mongo_values(application)
         app["_id"] = str(app.get("_id", ""))
         app["id"] = app["_id"]
         app["application_id"] = app["_id"]
         return app
+
+    @classmethod
+    def _serialize_mongo_values(cls, value):
+        if isinstance(value, ObjectId):
+            return str(value)
+        if isinstance(value, dict):
+            return {key: cls._serialize_mongo_values(item) for key, item in value.items()}
+        if isinstance(value, list):
+            return [cls._serialize_mongo_values(item) for item in value]
+        return value

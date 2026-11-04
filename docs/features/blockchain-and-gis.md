@@ -4,6 +4,11 @@ Requirement source: `complete.md` §4, §5.
 
 ## Blockchain
 
+Signed-in users and Admins can link a MetaMask address in Profile by signing a
+one-time challenge. This proves control of an address without sending a transaction
+or exposing the private key. A wallet signature alone does not grant property access
+or establish legal ownership.
+
 ### Smart contract
 
 `blockchain/contracts/GeoLedger.sol`
@@ -11,7 +16,7 @@ Requirement source: `complete.md` §4, §5.
 | Function | Purpose |
 |---|---|
 | `registerProperty(propertyId, owner)` | First-time on-chain title |
-| `transferOwnership(propertyId, newOwner)` | Change owner (owner or registrar) |
+| `transferOwnership(propertyId, newOwner)` | Change owner (current owner or Admin signer) |
 | `getProperty(propertyId)` | View property id, owner, registeredAt, exists |
 
 On-chain key = cadastral **survey number**. Document hashes and polygons stay off-chain in the database.
@@ -19,8 +24,8 @@ On-chain key = cadastral **survey number**. Document hashes and polygons stay of
 ### Authorized writes only
 
 1. User workflows never call the chain directly from the browser.
-2. Flask `BlockchainService` signs with the registrar private key (`BLOCKCHAIN_PRIVATE_KEY`).
-3. Direct `POST /blockchain/register` and `POST /blockchain/transfer` require **admin** JWT.
+2. Flask `BlockchainService` signs with the Admin private key (`BLOCKCHAIN_PRIVATE_KEY`).
+3. Direct `POST /blockchain/register` and `POST /blockchain/transfer` require an **Admin session**.
 4. Normal path: admin `POST /applications/<id>/approve` after documents are verified.
 
 | Application type | Chain call on approve |
@@ -42,7 +47,7 @@ Failed RPC/tx → application `BLOCKCHAIN_FAILED` and user-visible error.
 
 ### Simulation mode
 
-If `BLOCKCHAIN_CONTRACT_ADDRESS` is missing or Hardhat is offline, `BlockchainService` runs in **simulation mode** (deterministic fake hashes) so local demos and tests still complete. Set a real deployed address for true on-chain anchoring.
+If `BLOCKCHAIN_CONTRACT_ADDRESS` is missing or Hardhat is offline, `BlockchainService` runs in **simulation mode** (deterministic fake hashes) so local demos and tests still complete. Set a real deployed address for true on-chain anchoring. Simulation is disabled when `APP_ENV=production`; the production server requires the configured RPC, contract, and signer to initialize.
 
 ### Verification
 

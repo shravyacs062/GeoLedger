@@ -17,7 +17,7 @@ Shows live counts for:
 - Recent blockchain transactions
 - Total users
 
-From the admin dashboard, registrars open application review (`/admin/applications/:id`) to verify documents, approve, reject, or request corrections.
+From the Admin dashboard, administrators open application review (`/admin/applications/:id`) to verify documents, approve, reject, or request corrections.
 
 ## User dashboard
 

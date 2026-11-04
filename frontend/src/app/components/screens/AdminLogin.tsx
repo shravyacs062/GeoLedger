@@ -1,19 +1,20 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Shield, AlertCircle, Loader2, Map } from 'lucide-react';
+import { isAxiosError } from 'axios';
 
 import { Button } from '../ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Input } from '../ui/input';
 import { Label } from '../ui/label';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../context/useAuth';
 
 export function AdminLogin() {
   const navigate = useNavigate();
   const location = useLocation();
   const { loginAdmin, isAuthenticated, isAdmin, hasChecked } = useAuth();
-  const [email, setEmail] = useState('admin@geoledger.local');
-  const [password, setPassword] = useState('Admin@12345');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -32,25 +33,30 @@ export function AdminLogin() {
     try {
       await loginAdmin(email, password);
       navigate(from, { replace: true });
-    } catch (err: any) {
-      setError(err?.response?.data?.message || err.message || 'Admin login failed');
+    } catch (err: unknown) {
+      const message = isAxiosError<{ message?: string }>(err)
+        ? err.response?.data?.message || err.message
+        : err instanceof Error ? err.message : undefined;
+      setError(message || 'Admin login failed');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen bg-[#0F172A] flex items-center justify-center p-4">
+    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-[radial-gradient(ellipse_at_50%_0%,#164e63_0%,#0f172a_55%)] p-4">
+      <div className="pointer-events-none absolute -left-24 top-1/4 h-72 w-72 rounded-full bg-teal-500/10 blur-3xl" />
+      <div className="pointer-events-none absolute -right-20 bottom-0 h-80 w-80 rounded-full bg-sky-500/10 blur-3xl" />
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-[#0F766E] rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <Shield className="w-10 h-10 text-white" />
+            <Shield className="w-9 h-9 text-white" />
           </div>
-          <h1 className="text-2xl font-semibold text-white">GeoLedger Admin</h1>
-          <p className="text-[#94A3B8]">Registrar & Administrator Portal</p>
+          <h1 className="text-3xl font-semibold tracking-tight text-white">GeoLedger Admin</h1>
+          <p className="mt-1 text-[#94A3B8]">Secure Admin portal</p>
         </div>
 
-        <Card className="border-[#334155] bg-[#1E293B] shadow-xl">
+        <Card className="border-white/10 bg-[#172338]/90 text-white shadow-2xl shadow-black/20 backdrop-blur-xl">
           <CardHeader>
             <CardTitle className="text-white">Admin Login</CardTitle>
             <CardDescription className="text-[#94A3B8]">
@@ -89,7 +95,7 @@ export function AdminLogin() {
                 </div>
               )}
 
-              <Button type="submit" disabled={loading} className="w-full bg-[#0F766E] hover:bg-[#0F766E]/90 h-11">
+              <Button type="submit" disabled={loading} className="h-11 w-full rounded-xl bg-[#0F766E] shadow-sm shadow-teal-950/20 hover:bg-[#0F766E]/90">
                 {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
                 Sign in as Admin
               </Button>
@@ -97,7 +103,7 @@ export function AdminLogin() {
 
             <div className="mt-6 pt-4 border-t border-[#334155] text-center space-y-2">
               <Link to="/login" className="block text-sm text-[#94A3B8] hover:text-[#5EEAD4]">
-                ← Citizen / User login
+                ← User login
               </Link>
               <Link to="/" className="inline-flex items-center gap-1 text-sm text-[#64748B] hover:text-[#94A3B8]">
                 <Map className="w-3.5 h-3.5" /> Home

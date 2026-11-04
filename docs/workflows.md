@@ -2,7 +2,7 @@
 
 Canonical feature guide: [Ownership workflows](./features/ownership-workflows.md).
 
-These are the paths the system implements end to end. All mutating admin steps require an **Admin/Registrar JWT**.
+These are the paths the system implements end to end. All mutating admin steps require an **Admin session**.
 
 ## New registration
 
@@ -52,7 +52,7 @@ Seller                     API                         Chain
 
 Required files: `SALE_DEED`, `SELLER_ID_PROOF`, `BUYER_ID_PROOF`, `MUTATION_CERTIFICATE`.
 
-New owner is `party_details.buyer.wallet_address`, falling back to `applicant_wallet`. Chain call is signed by the backend registrar key.
+New owner is `party_details.buyer.wallet_address`, falling back to `applicant_wallet`. Chain call is signed by the backend Admin key.
 
 ## Inheritance transfer
 

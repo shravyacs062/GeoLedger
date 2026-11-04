@@ -21,7 +21,7 @@ Complete walkthrough of major workflows for demos and acceptance testing (`compl
 
 1. Open `http://localhost:5173/` → **Citizen Login** → sign in as user.
 2. Confirm redirect to `/dashboard`. Try navigating to `/admin` → redirected away.
-3. Log out. Open **Admin / Registrar** → sign in as admin → `/admin`.
+3. Log out. Open **Admin** → sign in as admin → `/admin`.
 4. Confirm citizen cannot call approve APIs (403 without admin token).
 
 ---

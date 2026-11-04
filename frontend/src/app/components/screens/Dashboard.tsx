@@ -1,231 +1,96 @@
-import { useState, useEffect } from 'react';
-import { Layout } from '../Layout';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
-import { Map, FileText, TrendingUp, Activity, MapPin, Clock } from 'lucide-react';
-import { Button } from '../ui/button';
+import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { Activity, Building2, ClipboardList, FilePlus2, RefreshCw } from 'lucide-react';
+
 import { api } from '../../../services/api';
+import { useAuth } from '../../context/useAuth';
+import { Layout } from '../Layout';
+import { Button } from '../ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+
+type Summary = {
+  registered_properties: number;
+  submitted_applications: number;
+  pending_applications: number;
+};
+
+type Application = {
+  id: string;
+  survey_number: string;
+  application_type: string;
+  status: string;
+  created_at?: string;
+};
 
 export function Dashboard() {
-  const [properties, setProperties] = useState<any[]>([]);
-  const [applications, setApplications] = useState<any[]>([]);
-  const [transactions, setTransactions] = useState<any[]>([]);
-  const [userStats, setUserStats] = useState<any>(null);
+  const { user } = useAuth();
+  const [summary, setSummary] = useState<Summary | null>(null);
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [retry, setRetry] = useState(0);
 
   useEffect(() => {
-    Promise.all([
-      api.dashboard.user().catch(() => null),
-      api.properties.list().catch(() => []),
-      api.applications.list().catch(() => []),
-      api.blockchain.getTransactions().catch(() => []),
-    ]).then(([dash, props, apps, txs]) => {
-      setUserStats(dash);
-      setProperties(props || []);
-      setApplications(apps || []);
-      setTransactions(txs || []);
-    });
-  }, []);
+    let active = true;
+    Promise.all([api.dashboard.user(), api.applications.list()])
+      .then(([nextSummary, nextApplications]) => {
+        if (active) {
+          setSummary(nextSummary);
+          setApplications(nextApplications.slice(0, 5));
+          setError('');
+        }
+      })
+      .catch((reason) => {
+        if (active) setError(reason?.response?.data?.message || 'Unable to load your dashboard data.');
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => { active = false; };
+  }, [retry]);
 
-  const stats = [
-    {
-      icon: Map,
-      label: 'My Properties',
-      value: String(userStats?.registered_properties ?? properties.length),
-      color: 'bg-[#0F766E]',
-    },
-    {
-      icon: FileText,
-      label: 'Pending Applications',
-      value: String(
-        userStats?.pending_applications ??
-          applications.filter((a) => !['COMPLETED', 'REJECTED'].includes(a.status)).length
-      ),
-      color: 'bg-[#38BDF8]',
-    },
-    {
-      icon: TrendingUp,
-      label: 'Submitted Applications',
-      value: String(userStats?.submitted_applications ?? applications.length),
-      color: 'bg-[#16A34A]',
-    },
-    {
-      icon: Activity,
-      label: 'Blockchain Txns',
-      value: String(transactions.length),
-      color: 'bg-[#334155]',
-    },
+  const cards = [
+    { title: 'Registered properties', value: summary?.registered_properties ?? '—', icon: Building2, color: 'bg-teal-50 text-teal-700' },
+    { title: 'Applications submitted', value: summary?.submitted_applications ?? applications.length, icon: ClipboardList, color: 'bg-sky-50 text-sky-700' },
+    { title: 'Applications in progress', value: summary?.pending_applications ?? applications.filter((app) => !['COMPLETED', 'REJECTED'].includes(app.status)).length, icon: Activity, color: 'bg-amber-50 text-amber-700' },
   ];
-
-  const sourceProps = userStats?.properties?.length ? userStats.properties : properties;
-  const recentProperties = sourceProps.slice(0, 3).map((p: any) => ({
-    id: p.survey_number || p.property_id || '—',
-    location: [p.village, p.district].filter(Boolean).join(', ') || 'Registered parcel',
-    area: p.area ? `${p.area} sq ft` : '—',
-    status: p.status || 'REGISTERED',
-  }));
-
-  const sourceApps = userStats?.recent_applications?.length
-    ? userStats.recent_applications
-    : applications;
-  const recentActivity = sourceApps.slice(0, 4).map((t: any) => ({
-    action: (t.application_type || t.transaction_type || 'Application').replace(/_/g, ' '),
-    property: t.survey_number || t.property_id || '—',
-    time: t.updated_at || t.created_at || t.timestamp || 'Recent',
-  }));
 
   return (
     <Layout>
-      <div className="p-4 lg:p-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-semibold text-[#0F172A] mb-2">Dashboard</h1>
-          <p className="text-[#64748B]">Overview of your properties, applications, and transfers.</p>
-        </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          {stats.map((stat, index) => {
-            const Icon = stat.icon;
-            return (
-              <Card key={index} className="border-[#E2E8F0]">
-                <CardContent className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <div className={`w-12 h-12 ${stat.color} rounded-lg flex items-center justify-center`}>
-                      <Icon className="w-6 h-6 text-white" />
-                    </div>
-                  </div>
-                  <p className="text-3xl font-semibold text-[#0F172A] mb-1">{stat.value}</p>
-                  <p className="text-sm text-[#64748B]">{stat.label}</p>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
-
-        <div className="grid lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2">
-            <Card className="border-[#E2E8F0]">
-              <CardHeader>
-                <CardTitle className="text-[#0F172A]">GIS Map Overview</CardTitle>
-                <CardDescription className="text-[#64748B]">
-                  Open the interactive map to inspect parcels
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="aspect-video bg-gradient-to-br from-[#0F766E]/20 to-[#38BDF8]/20 rounded-xl flex items-center justify-center relative overflow-hidden">
-                  <Map className="w-32 h-32 text-[#0F766E]/30" />
-                  <div className="absolute top-4 left-4 bg-white rounded-lg shadow-md p-3 flex items-center gap-2">
-                    <MapPin className="w-4 h-4 text-[#0F766E]" />
-                    <span className="text-sm text-[#0F172A]">{properties.length} Properties</span>
-                  </div>
-                  <div className="absolute bottom-4 right-4">
-                    <Link to="/map">
-                      <Button size="sm" className="bg-[#0F766E] hover:bg-[#0F766E]/90">
-                        View Full Map
-                      </Button>
-                    </Link>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-[#E2E8F0] mt-6">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle className="text-[#0F172A]">Your Properties</CardTitle>
-                    <CardDescription className="text-[#64748B]">Registered land parcels</CardDescription>
-                  </div>
-                  <Link to="/properties">
-                    <Button variant="outline" size="sm" className="border-[#E2E8F0]">View All</Button>
-                  </Link>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {recentProperties.length === 0 && (
-                    <p className="text-sm text-[#64748B]">No registered properties yet.</p>
-                  )}
-                  {recentProperties.map((property: any, index: number) => (
-                    <Link
-                      key={index}
-                      to={`/properties/${property.id}`}
-                      className="flex items-center justify-between p-4 bg-[#F8FAFC] rounded-lg hover:bg-[#F1F5F9]"
-                    >
-                      <div className="flex-1">
-                        <p className="font-medium text-[#0F172A]">{property.id}</p>
-                        <p className="text-sm text-[#64748B]">{property.location}</p>
-                      </div>
-                      <div className="text-right">
-                        <p className="text-sm text-[#0F172A]">{property.area}</p>
-                        <span className="inline-block px-2 py-1 rounded text-xs mt-1 bg-[#16A34A]/10 text-[#16A34A]">
-                          {property.status}
-                        </span>
-                      </div>
-                    </Link>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+      <main className="mx-auto max-w-[1600px] space-y-7 p-4 sm:p-6 lg:p-9">
+        <header className="relative overflow-hidden rounded-2xl border border-teal-100 bg-gradient-to-br from-white via-white to-teal-50/80 px-6 py-7 shadow-sm sm:px-8">
+          <div className="pointer-events-none absolute -right-10 -top-20 h-56 w-56 rounded-full bg-teal-100/60 blur-3xl" />
+          <div className="relative flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-teal-700">Property owner portal</p>
+              <h1 className="text-3xl font-semibold tracking-tight text-[#0F172A]">Welcome, {user?.name || 'Property owner'}</h1>
+              <p className="mt-1 text-sm text-[#64748B]">Track your property records and application progress.</p>
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" className="border-slate-200 bg-white/80" onClick={() => { setLoading(true); setRetry((value) => value + 1); }} disabled={loading}><RefreshCw className="mr-2 h-4 w-4" />Refresh</Button>
+              <Button asChild className="bg-[#0F766E] hover:bg-[#115E59]"><Link to="/applications/new"><FilePlus2 className="mr-2 h-4 w-4" />New application</Link></Button>
+            </div>
           </div>
-
-          <div>
-            <Card className="border-[#E2E8F0]">
-              <CardHeader>
-                <CardTitle className="text-[#0F172A]">Recent Activity</CardTitle>
-                <CardDescription className="text-[#64748B]">Latest applications</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {recentActivity.length === 0 && (
-                    <p className="text-sm text-[#64748B]">No activity yet.</p>
-                  )}
-                  {recentActivity.map((activity: any, index: number) => (
-                    <div key={index} className="flex gap-4">
-                      <div className="w-2 h-2 bg-[#0F766E] rounded-full mt-2 flex-shrink-0"></div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-[#0F172A]">{activity.action}</p>
-                        <p className="text-sm text-[#64748B]">{activity.property}</p>
-                        <div className="flex items-center gap-1 mt-1">
-                          <Clock className="w-3 h-3 text-[#64748B]" />
-                          <p className="text-xs text-[#64748B]">{activity.time}</p>
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="border-[#E2E8F0] mt-6">
-              <CardHeader>
-                <CardTitle className="text-[#0F172A]">Quick Actions</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Link to="/register">
-                  <Button className="w-full bg-[#0F766E] hover:bg-[#0F766E]/90" size="lg">
-                    <FileText className="w-4 h-4 mr-2" />
-                    Register New Property
-                  </Button>
-                </Link>
-                <Link to="/transfer">
-                  <Button variant="outline" className="w-full border-[#E2E8F0]" size="lg">
-                    Ownership Transfer
-                  </Button>
-                </Link>
-                <Link to="/inheritance">
-                  <Button variant="outline" className="w-full border-[#E2E8F0]" size="lg">
-                    Inheritance Transfer
-                  </Button>
-                </Link>
-                <Link to="/valuation">
-                  <Button variant="outline" className="w-full border-[#E2E8F0]" size="lg">
-                    Land Valuation
-                  </Button>
-                </Link>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      </div>
+        </header>
+        {error && <p role="alert" className="rounded-md bg-red-50 p-3 text-sm text-red-800">{error}</p>}
+        <section className="grid gap-4 md:grid-cols-3">
+          {cards.map(({ title, value, icon: Icon, color }) => <Card key={title} className="overflow-hidden"><CardContent className="flex items-center gap-4 p-5"><span className={`flex h-12 w-12 items-center justify-center rounded-2xl ${color}`}><Icon className="h-5 w-5" /></span><div><p className="text-3xl font-semibold tracking-tight">{loading ? '…' : value}</p><p className="text-sm text-[#64748B]">{title}</p></div></CardContent></Card>)}
+        </section>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0">
+            <CardTitle>Recent applications</CardTitle>
+            <Button asChild variant="ghost" size="sm"><Link to="/applications">View all</Link></Button>
+          </CardHeader>
+          <CardContent>
+            {loading ? <p className="py-5 text-sm text-[#64748B]">Loading applications…</p>
+              : applications.length === 0 ? <p className="py-5 text-sm text-[#64748B]">No applications yet. Start by submitting a property registration.</p>
+                : <div className="divide-y">{applications.map((application) => <Link key={application.id} to={`/applications/${application.id}`} className="flex flex-wrap items-center justify-between gap-3 py-4 hover:bg-slate-50">
+                  <div><p className="font-medium">{application.survey_number}</p><p className="text-xs text-[#64748B]">{application.application_type.replaceAll('_', ' ')}</p></div>
+                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs">{application.status}</span>
+                </Link>)}</div>}
+          </CardContent>
+        </Card>
+      </main>
     </Layout>
   );
 }

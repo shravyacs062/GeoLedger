@@ -1,14 +1,11 @@
 import { useState, useEffect } from 'react';
+import { isAxiosError } from 'axios';
 import { Link } from 'react-router-dom';
 import {
   Building2,
   CheckCircle2,
-  Clock3,
   MapPin,
   Search,
-  ShieldCheck,
-  ArrowRight,
-  FileText,
   RefreshCw,
 } from 'lucide-react';
 
@@ -22,34 +19,55 @@ import {
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Input } from '../ui/input';
-import { api } from '../../../services/api';
-import { useWallet } from '../../context/WalletContext';
+import { api, type Property } from '../../../services/api';
+import { useWallet } from '../../context/useWallet';
+import { useAuth } from '../../context/useAuth';
 import { sameAddress } from '../../../services/wallet';
 
 export function MyProperties() {
   const { address } = useWallet();
-  const [properties, setProperties] = useState<any[]>([]);
+  const { user } = useAuth();
+  const [properties, setProperties] = useState<Property[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   const loadProperties = async () => {
     try {
       setLoading(true);
+      setError('');
       const data = await api.properties.list();
       setProperties(data);
-    } catch (err) {
-      console.error('Failed to load properties', err);
+    } catch (err: unknown) {
+      setError(isAxiosError<{ message?: string }>(err)
+        ? err.response?.data?.message || err.message
+        : err instanceof Error ? err.message : 'Unable to load properties. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadProperties();
+    let active = true;
+    api.properties.list()
+      .then((data) => {
+        if (active) setProperties(data);
+      })
+      .catch((err: unknown) => {
+        if (active) {
+          setError(isAxiosError<{ message?: string }>(err)
+            ? err.response?.data?.message || err.message
+            : err instanceof Error ? err.message : 'Unable to load properties. Please try again.');
+        }
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => { active = false; };
   }, []);
 
   const filteredProperties = properties.filter((p) => {
-    if (!sameAddress(p.owner_wallet, address)) return false;
+    if (user?.role !== 'admin' && !sameAddress(p.owner_wallet, user?.wallet_address || address)) return false;
     const q = searchQuery.toLowerCase();
     const survey = (p.survey_number || '').toLowerCase();
     const propId = (p.property_id || '').toLowerCase();
@@ -64,7 +82,7 @@ export function MyProperties() {
           <div>
             <h1 className="text-3xl font-semibold text-[#0F172A] mb-2">Registered Properties</h1>
             <p className="text-[#64748B]">
-              Verified land parcels anchored on GeoLedger with cryptographic integrity.
+              Property records associated with your linked wallet.
             </p>
           </div>
 
@@ -86,6 +104,8 @@ export function MyProperties() {
           </div>
         </div>
 
+        {error && <p role="alert" className="rounded-md bg-red-50 p-3 text-sm text-red-800">{error}</p>}
+
         {/* Search Bar */}
         <div className="relative max-w-md">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#94A3B8]" />
@@ -100,18 +120,20 @@ export function MyProperties() {
         {/* Property Cards */}
         {loading ? (
           <div className="py-12 text-center text-sm text-[#64748B]">Loading properties from registry...</div>
-        ) : filteredProperties.length === 0 ? (
+        ) : error ? null : filteredProperties.length === 0 ? (
           <Card className="border-[#E2E8F0] p-12 text-center">
             <Building2 className="mx-auto h-12 w-12 text-[#94A3B8]" />
             <h3 className="mt-4 text-base font-semibold text-[#0F172A]">No properties found</h3>
             <p className="mt-1 text-sm text-[#64748B]">
               {searchQuery
                 ? 'Try a different search query.'
-                : 'No land parcels are registered to this MetaMask account yet.'}
+                : user?.role !== 'admin' && !user?.wallet_address
+                  ? 'Link a wallet in your profile to view property records associated with it.'
+                  : 'No property records are associated with this account yet.'}
             </p>
-            <Link to="/applications/new" className="mt-4 inline-block">
-              <Button className="bg-[#0F766E] hover:bg-[#115E59]">Submit Registration Application</Button>
-            </Link>
+            {user?.role !== 'admin' && !user?.wallet_address
+              ? <Link to="/profile" className="mt-4 inline-block"><Button variant="outline">Open profile</Button></Link>
+              : <Link to="/applications/new" className="mt-4 inline-block"><Button className="bg-[#0F766E] hover:bg-[#115E59]">Start an application</Button></Link>}
           </Card>
         ) : (
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -134,18 +156,18 @@ export function MyProperties() {
                   <div className="space-y-2 text-xs text-[#64748B]">
                     <div className="flex items-center gap-1.5">
                       <MapPin className="h-3.5 w-3.5 text-[#94A3B8]" />
-                      <span>{prop.village || 'Thandavapura'}, {prop.taluk || 'Nanjangud'}, {prop.district || 'Mysuru'}</span>
+                      <span>{[prop.village, prop.taluk, prop.district].filter(Boolean).join(', ') || 'Location not provided'}</span>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <Building2 className="h-3.5 w-3.5 text-[#94A3B8]" />
-                      <span>Area: {prop.area || 2500} sq ft ({prop.land_type || 'Residential'})</span>
+                      <span>{prop.area ? `Area: ${prop.area} sq ft` : 'Area not provided'}{prop.land_type ? ` · ${prop.land_type}` : ''}</span>
                     </div>
                   </div>
 
                   <div className="rounded-lg bg-[#F8FAFC] p-3 text-xs">
-                    <p className="font-medium text-[#475569]">Blockchain Owner Wallet</p>
+                    <p className="font-medium text-[#475569]">Owner wallet</p>
                     <p className="mt-0.5 truncate font-mono text-[11px] text-[#0F766E]">
-                      {prop.owner_wallet || '0x...'}
+                      {prop.owner_wallet || 'Not recorded'}
                     </p>
                   </div>
 

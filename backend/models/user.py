@@ -2,7 +2,7 @@ from dataclasses import dataclass, asdict, field
 from typing import Optional
 
 
-ROLES = {"USER", "ADMIN", "REGISTRAR"}
+ROLES = {"USER", "ADMIN"}
 
 
 @dataclass

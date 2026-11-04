@@ -4,12 +4,28 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui
 import { Button } from '../ui/button';
 import { Badge } from '../ui/badge';
 import { Loader2, Users } from 'lucide-react';
+import { isAxiosError } from 'axios';
 import { api } from '../../../services/api';
 
-const ROLES = ['USER', 'ADMIN', 'REGISTRAR'];
+const ROLES = ['user', 'admin'];
+
+type ManagedUser = {
+  id: string;
+  name: string;
+  email: string;
+  wallet_address: string | null;
+  role: 'user' | 'admin';
+};
+
+function getErrorMessage(error: unknown, fallback: string) {
+  if (isAxiosError<{ message?: string }>(error)) {
+    return error.response?.data?.message || error.message || fallback;
+  }
+  return error instanceof Error ? error.message : fallback;
+}
 
 export function AdminUsers() {
-  const [users, setUsers] = useState<any[]>([]);
+  const [users, setUsers] = useState<ManagedUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [savingId, setSavingId] = useState<string | null>(null);
@@ -19,15 +35,26 @@ export function AdminUsers() {
       setLoading(true);
       setError(null);
       setUsers(await api.auth.listUsers());
-    } catch (err: any) {
-      setError(err?.response?.data?.message || err.message || 'Failed to load users');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Failed to load users'));
     } finally {
       setLoading(false);
     }
   };
 
   useEffect(() => {
-    load();
+    let active = true;
+    api.auth.listUsers()
+      .then((result: ManagedUser[]) => {
+        if (active) setUsers(result);
+      })
+      .catch((err: unknown) => {
+        if (active) setError(getErrorMessage(err, 'Failed to load users'));
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => { active = false; };
   }, []);
 
   const changeRole = async (userId: string, role: string) => {
@@ -35,8 +62,8 @@ export function AdminUsers() {
     try {
       await api.auth.setRole(userId, role);
       await load();
-    } catch (err: any) {
-      setError(err?.response?.data?.message || err.message || 'Failed to update role');
+    } catch (err: unknown) {
+      setError(getErrorMessage(err, 'Failed to update role'));
     } finally {
       setSavingId(null);
     }
@@ -47,7 +74,7 @@ export function AdminUsers() {
       <div className="p-4 lg:p-8 space-y-6">
         <div>
           <h1 className="text-3xl font-semibold text-[#0F172A]">User Management</h1>
-          <p className="text-[#64748B]">View accounts and assign USER / ADMIN / REGISTRAR roles</p>
+          <p className="text-[#64748B]">View user accounts and assign user or administrator access</p>
         </div>
 
         {loading && (
@@ -71,15 +98,15 @@ export function AdminUsers() {
                 className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border border-[#E2E8F0] rounded-lg p-4"
               >
                 <div>
-                  <p className="font-medium text-[#0F172A]">{u.full_name || 'Unnamed user'}</p>
-                  <p className="text-sm text-[#64748B]">{u.email || 'No email (wallet-only)'}</p>
+                  <p className="font-medium text-[#0F172A]">{u.name || 'Unnamed user'}</p>
+                  <p className="text-sm text-[#64748B]">{u.email || 'No email on record'}</p>
                   <p className="font-mono text-xs text-[#94A3B8] break-all">{u.wallet_address || 'No wallet'}</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge variant="outline">{u.role || 'USER'}</Badge>
+                  <Badge variant="outline">{u.role || 'user'}</Badge>
                   <select
                     className="h-9 rounded-md border border-[#E2E8F0] px-2 text-sm"
-                    value={(u.role || 'USER').toUpperCase()}
+                    value={u.role}
                     disabled={savingId === u.id}
                     onChange={(e) => changeRole(u.id, e.target.value)}
                   >

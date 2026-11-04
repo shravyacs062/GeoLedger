@@ -1,0 +1,57 @@
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  color: #0f172a;
+  background:
+    radial-gradient(ellipse at 92% 0%, rgb(204 251 241 / 34%), transparent 32rem),
+    #f6f8fb;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  color: #0f172a;
+  background: #99f6e4;
+}
+
+[data-slot="card"] {
+  border-color: #e6ebf1;
+  box-shadow: 0 2px 8px rgb(15 23 42 / 3%), 0 12px 32px rgb(15 23 42 / 3%);
+  transition: box-shadow 180ms ease, border-color 180ms ease, transform 180ms ease;
+}
+
+[data-slot="card"]:hover {
+  border-color: #d7e3e7;
+  box-shadow: 0 4px 12px rgb(15 23 42 / 4%), 0 16px 36px rgb(15 23 42 / 5%);
+}
+
+input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
+select,
+textarea {
+  transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+button:focus-visible,
+a:focus-visible {
+  outline: 3px solid rgb(20 184 166 / 28%);
+  outline-offset: 2px;
+}
+
+button,
+a {
+  -webkit-tap-highlight-color: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}

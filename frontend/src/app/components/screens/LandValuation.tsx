@@ -6,7 +6,7 @@ import { Button } from '../ui/button';
 import { Label } from '../ui/label';
 import { AlertCircle, Loader2, Calculator } from 'lucide-react';
 import { api } from '../../../services/api';
-import { useAuth } from '../../context/AuthContext';
+import { useAuth } from '../../context/useAuth';
 
 export function LandValuation() {
   const { isAdmin } = useAuth();

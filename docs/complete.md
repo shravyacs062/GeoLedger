@@ -11,7 +11,7 @@ Create two distinct login pages with separate access permissions.
  
 - Dedicated Admin Login page.
 - Secure admin authentication.
-- Admin dashboard accessible only to authorized administrators/registrars.
+- Admin dashboard accessible only to authorized administrators.
 - Role-based permissions for reviewing, approving, rejecting, and managing applications.
 - Admin logout and session management.
 - Unauthorized users must not be able to access admin pages by directly entering URLs.
@@ -44,7 +44,7 @@ These are mandatory core modules and must be visible as separate sections in the
 - Upload required ownership and supporting documents.
 - Automatically verify and validate uploaded documents.
 - Check for duplicate property registrations and conflicting ownership records.
-- Submit the application to the Admin/Registrar.
+- Submit the application to the Admin.
 - Admin reviews the documents and property information.
 - Admin approves or rejects the application with remarks.
 - Upon approval, register the property on the blockchain.
@@ -61,7 +61,7 @@ These are mandatory core modules and must be visible as separate sections in the
 - Validate the new owner's identity and supporting documents.
 - Verify transfer-related documents and check for inconsistencies.
 - Check for pending applications or conflicting ownership claims.
-- Submit the application to the Admin/Registrar.
+- Submit the application to the Admin.
 - Admin reviews and approves or rejects the application.
 - Update ownership on the blockchain only after approval.
 - Update the database and property records.
@@ -85,7 +85,7 @@ These are mandatory core modules and must be visible as separate sections in the
 - Verify the deceased owner's ownership against GeoLedger records.
 - Detect missing documents, duplicate claims, inconsistent information, and conflicting ownership claims.
 - Allow additional documents or corrections to be submitted.
-- Forward the application for Admin/Registrar review.
+- Forward the application for Admin review.
 - Admin reviews the legal documents and approves or rejects the application with remarks.
 - Update ownership on the blockchain only after authorized approval.
 - Update property records and notify the applicant and relevant parties.
@@ -161,7 +161,7 @@ Important: SHA-256 verifies file integrity against a previously trusted hash; it
 - Implement property registration through smart contracts.
 - Implement ownership transfer through smart contracts.
 - Restrict blockchain registration and transfer to authorized operations.
-- Ensure transfers occur only after Admin/Registrar approval.
+- Ensure transfers occur only after Admin approval.
 - Store relevant property identifiers, ownership information, timestamps, transaction references, and document hashes as appropriate.
 - Maintain transaction history.
 - Display transaction hash and transaction status.

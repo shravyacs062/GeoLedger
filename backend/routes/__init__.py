@@ -14,7 +14,6 @@ from .dashboard import dashboard_bp
 from .valuation import valuation_bp
 from .qr import qr_bp
 
-
 def register_blueprints(app: Flask) -> None:
 
     app.register_blueprint(auth_bp)
