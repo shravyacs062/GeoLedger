@@ -76,6 +76,7 @@ class OwnershipService:
                     "phone": data.get("buyer_phone"),
                     "gov_id": data.get("buyer_gov_id"),
                 },
+                "transfer_reason": data.get("reason", "Other"),
             },
         }
 

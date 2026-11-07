@@ -3,6 +3,7 @@ import hashlib
 import os
 
 from database.client import get_database
+from utils.application_status import transition_application_status
 from utils.errors import APIError
 
 
@@ -179,7 +180,9 @@ class VerificationService:
         else:
             new_status = "UNDER_REVIEW"
 
-        self.applications.update_one(
-            {"_id": application_id},
-            {"$set": {"status": new_status, "updated_at": datetime.utcnow().isoformat()}},
+        transition_application_status(
+            self.applications,
+            application_id,
+            new_status,
+            actor="document_review",
         )

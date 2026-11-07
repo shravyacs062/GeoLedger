@@ -18,7 +18,7 @@ def create_notification(
         doc = {
             "recipient_id": recipient_id,
             "recipient_wallet": recipient_wallet,
-            "recipient_role": recipient_role,
+            "recipient_role": recipient_role.lower() if isinstance(recipient_role, str) else recipient_role,
             "title": title,
             "message": message,
             "notification_type": notification_type,

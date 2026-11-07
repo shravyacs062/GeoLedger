@@ -82,6 +82,12 @@ export function AdminDashboard() {
     }
   };
 
+  const rejectDocument = (documentId: string) => {
+    const remarks = prompt('Why is this document being rejected?');
+    if (!remarks?.trim()) return;
+    void action(documentId, () => api.verification.review(documentId, 'REJECTED', remarks.trim()));
+  };
+
   const pendingApplications = applications.filter((app) => !['COMPLETED', 'REJECTED'].includes(app.status));
   const pendingDocuments = documents.filter((doc) => doc.verification_status !== 'VERIFIED' && doc.verification_status !== 'REJECTED');
 
@@ -150,7 +156,7 @@ export function AdminDashboard() {
                   <td className="p-3">{doc.verification_status}{doc.verification_notes && <p className="text-xs text-[#64748B]">{doc.verification_notes}</p>}</td>
                   <td className="p-3"><div className="flex gap-2">
                     <Button size="sm" disabled={busy === doc.id} onClick={() => void action(doc.id, () => api.verification.review(doc.id, 'VERIFIED', 'Approved by Admin'))}>Verify</Button>
-                    <Button size="sm" variant="outline" disabled={busy === doc.id} onClick={() => void action(doc.id, () => api.verification.review(doc.id, 'REJECTED', 'Rejected by Admin'))}>Reject</Button>
+                    <Button size="sm" variant="outline" disabled={busy === doc.id} onClick={() => rejectDocument(doc.id)}>Reject</Button>
                   </div></td>
                 </tr>)}</tbody>
               </table>}

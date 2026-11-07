@@ -1,9 +1,12 @@
 from datetime import datetime
+import math
+import logging
 import uuid
 from bson import ObjectId
 
 from database.client import get_database
 from services.blockchain_service import BlockchainService
+from services.block_log_service import append_confirmed_block
 from utils.constants import (
     APPLICATION_STATUSES,
     APPLICATION_TYPES,
@@ -13,7 +16,9 @@ from utils.errors import APIError
 from utils.validation import (
     validate_survey_number,
     validate_wallet_address,
+    validate_polygon_boundary,
 )
+from utils.application_status import transition_application_status
 from utils.audit import log_audit
 from utils.notifications_helper import create_notification, notify_admins
 
@@ -24,6 +29,17 @@ class ApplicationService:
         self.db = get_database()
         self.collection = self.db.applications
         self._blockchain = None
+
+    @staticmethod
+    def _save_confirmed_block(transaction: dict) -> None:
+        try:
+            append_confirmed_block(transaction)
+            transaction["block_log_saved"] = True
+        except OSError:
+            transaction["block_log_saved"] = False
+            logging.getLogger(__name__).exception(
+                "Confirmed block could not be appended to the local block log"
+            )
 
     @property
     def blockchain(self):
@@ -95,11 +111,6 @@ class ApplicationService:
         if application_type in ("OWNERSHIP_TRANSFER", "INHERITANCE_TRANSFER") and not existing_property:
             raise APIError("A registered property is required for transfer or inheritance", status_code=404)
 
-        required_documents = DOCUMENT_REQUIREMENTS.get(
-            application_type,
-            DOCUMENT_REQUIREMENTS.get("NEW_REGISTRATION", []),
-        )
-
         now = datetime.utcnow().isoformat()
 
         party_details = data.get("party_details") or {
@@ -124,6 +135,18 @@ class ApplicationService:
                     "name": data.get("applicant_name") or party_details.get("applicant_name"),
                 },
             )
+
+        required_documents = list(DOCUMENT_REQUIREMENTS.get(
+            application_type,
+            DOCUMENT_REQUIREMENTS.get("NEW_REGISTRATION", []),
+        ))
+        if application_type in ("INHERITANCE_TRANSFER", "INHERITANCE"):
+            heirs = party_details.get("legal_heirs") or []
+            if len(heirs) <= 1:
+                required_documents = [
+                    document_type for document_type in required_documents
+                    if document_type != "NOC_FROM_LEGAL_HEIRS"
+                ]
 
         # For inheritance/transfer, property must already exist
         if application_type in (
@@ -154,6 +177,22 @@ class ApplicationService:
                     )
 
         property_details = data.get("property_details") or {}
+        if application_type == "NEW_REGISTRATION":
+            if not isinstance(property_details, dict):
+                raise APIError("Property details must be an object", status_code=400)
+            for field in ("village", "taluk", "district"):
+                if not isinstance(property_details.get(field), str) or not property_details[field].strip():
+                    raise APIError(f"{field.title()} is required", status_code=400)
+            try:
+                area = float(property_details.get("area"))
+            except (TypeError, ValueError) as error:
+                raise APIError("A positive property area is required", status_code=400) from error
+            if not math.isfinite(area) or area <= 0:
+                raise APIError("A positive property area is required", status_code=400)
+            property_details["area"] = area
+            property_details["boundary"] = validate_polygon_boundary(
+                property_details.get("boundary")
+            )
         application_doc = {
             "_id": uuid.uuid4().hex,
             "application_type": application_type,
@@ -163,6 +202,7 @@ class ApplicationService:
             "survey_number": survey_number,
             "property_id": property_id,
             "status": "SUBMITTED",
+            "status_history": [{"status": "SUBMITTED", "at": now, "actor": "user"}],
             "required_documents": required_documents,
             "submitted_documents": [],
             "party_details": party_details,
@@ -263,10 +303,7 @@ class ApplicationService:
 
         if status in ("COMPLETED", "BLOCKCHAIN_PENDING", "APPROVED"):
             raise APIError("Use the approval workflow to approve or anchor an application", status_code=403)
-        update_fields = {
-            "status": status,
-            "updated_at": datetime.utcnow().isoformat(),
-        }
+        update_fields = {}
 
         if rejection_reason is not None:
             update_fields["rejection_reason"] = rejection_reason
@@ -274,15 +311,16 @@ class ApplicationService:
         if verification_summary is not None:
             update_fields["verification_summary"] = verification_summary
 
-        result = self.collection.update_one(
-            {"_id": application_id},
-            {"$set": update_fields},
+        application = transition_application_status(
+            self.collection,
+            application_id,
+            status,
+            actor="admin",
+            fields=update_fields,
         )
-
-        if result.matched_count == 0:
+        if not application:
             raise APIError("Application not found", status_code=404)
 
-        application = self.get_application(application_id)
         from services.notification_service import NotificationService
         NotificationService().create(
             "Application status updated",
@@ -290,7 +328,7 @@ class ApplicationService:
             user_id=application.get("applicant_user_id"),
             application_id=application_id,
         )
-        return application
+        return self._serialize_application(application)
 
     # ---------------------------------------------------------
     # ADD SUBMITTED DOCUMENT
@@ -306,21 +344,20 @@ class ApplicationService:
 
         new_status = "UNDER_REVIEW" if current_status not in ("VERIFIED", "APPROVED", "COMPLETED") else current_status
 
-        result = self.collection.update_one(
-            {"_id": application_id},
-            {
-                "$addToSet": {"submitted_documents": document_id},
-                "$set": {
-                    "status": new_status,
-                    "updated_at": datetime.utcnow().isoformat(),
-                },
-            },
+        submitted_documents = list(app.get("submitted_documents") or [])
+        if document_id not in submitted_documents:
+            submitted_documents.append(document_id)
+        updated = transition_application_status(
+            self.collection,
+            application_id,
+            new_status,
+            actor="user",
+            fields={"submitted_documents": submitted_documents},
         )
-
-        if result.matched_count == 0:
+        if not updated:
             raise APIError("Application not found", status_code=404)
 
-        return self.get_application(application_id)
+        return self._serialize_application(updated)
 
     # ---------------------------------------------------------
     # VERIFY AND APPROVE
@@ -343,9 +380,8 @@ class ApplicationService:
         missing_documents = [dt for dt in required_documents if dt not in uploaded_types]
 
         if missing_documents:
-            self.collection.update_one(
-                {"_id": application_id},
-                {"$set": {"status": "DOCUMENTS_PENDING", "updated_at": datetime.utcnow().isoformat()}},
+            transition_application_status(
+                self.collection, application_id, "DOCUMENTS_PENDING", actor="system"
             )
             raise APIError(
                 f"Required documents missing: {', '.join(missing_documents)}",
@@ -359,9 +395,8 @@ class ApplicationService:
         ]
 
         if unverified_documents:
-            self.collection.update_one(
-                {"_id": application_id},
-                {"$set": {"status": "UNDER_REVIEW", "updated_at": datetime.utcnow().isoformat()}},
+            transition_application_status(
+                self.collection, application_id, "UNDER_REVIEW", actor="system"
             )
             raise APIError(
                 f"Documents must be verified by reviewer before approval: {', '.join(unverified_documents)}",
@@ -376,15 +411,12 @@ class ApplicationService:
         }
 
         # Application is verified, now transition to APPROVED and BLOCKCHAIN_PENDING
-        self.collection.update_one(
-            {"_id": application_id},
-            {
-                "$set": {
-                    "status": "BLOCKCHAIN_PENDING",
-                    "verification_summary": verification_summary,
-                    "updated_at": datetime.utcnow().isoformat(),
-                }
-            },
+        transition_application_status(
+            self.collection,
+            application_id,
+            "BLOCKCHAIN_PENDING",
+            actor="admin",
+            fields={"verification_summary": verification_summary},
         )
 
         survey_number = application.get("survey_number")
@@ -447,9 +479,16 @@ class ApplicationService:
                     "to_address": new_owner,
                     "tx_hash": blockchain_result.get("transaction_hash"),
                     "block_number": blockchain_result.get("block_number"),
+                    "block_hash": blockchain_result.get("block_hash"),
+                    "block_timestamp": blockchain_result.get("block_timestamp"),
+                    "transaction_index": blockchain_result.get("transaction_index"),
+                    "gas_used": blockchain_result.get("gas_used"),
+                    "chain_id": blockchain_result.get("chain_id"),
+                    "simulation": blockchain_result.get("simulation", False),
                     "status": "CONFIRMED",
                     "timestamp": datetime.utcnow().isoformat(),
                 }
+                self._save_confirmed_block(tx_record)
                 self.db.transactions.insert_one(tx_record)
 
                 create_notification(
@@ -466,6 +505,15 @@ class ApplicationService:
                         recipient_wallet=prev_owner,
                         title="Ownership transferred",
                         message=f"Your property {survey_number} ownership has been transferred.",
+                        notification_type="TRANSFER_COMPLETED",
+                        related_id=application_id,
+                        related_type="application",
+                    )
+                if new_owner and new_owner.lower() != (application.get("applicant_wallet") or "").lower():
+                    create_notification(
+                        recipient_wallet=new_owner,
+                        title="Ownership transferred to you",
+                        message=f"Ownership of {survey_number} was transferred to your wallet after Admin approval.",
                         notification_type="TRANSFER_COMPLETED",
                         related_id=application_id,
                         related_type="application",
@@ -493,7 +541,8 @@ class ApplicationService:
                         "state": details.get("state") or "Karnataka",
                         "area": details.get("area"),
                         "geojson_reference": survey_number,
-                        "coordinates": details.get("coordinates"),
+                        "coordinates": details.get("coordinates")
+                        or (details.get("boundary") or {}).get("coordinates"),
                         "status": "REGISTERED",
                         **{
                             key: application.get("property_details", {}).get(key)
@@ -526,9 +575,16 @@ class ApplicationService:
                     "to_address": applicant_wallet,
                     "tx_hash": blockchain_result.get("transaction_hash"),
                     "block_number": blockchain_result.get("block_number"),
+                    "block_hash": blockchain_result.get("block_hash"),
+                    "block_timestamp": blockchain_result.get("block_timestamp"),
+                    "transaction_index": blockchain_result.get("transaction_index"),
+                    "gas_used": blockchain_result.get("gas_used"),
+                    "chain_id": blockchain_result.get("chain_id"),
+                    "simulation": blockchain_result.get("simulation", False),
                     "status": "CONFIRMED",
                     "timestamp": datetime.utcnow().isoformat(),
                 }
+                self._save_confirmed_block(tx_record)
                 self.db.transactions.insert_one(tx_record)
 
             # Mark Application as COMPLETED
@@ -542,9 +598,12 @@ class ApplicationService:
                 "updated_at": datetime.utcnow().isoformat(),
             }
 
-            self.collection.update_one(
-                {"_id": application_id},
-                {"$set": update_data},
+            transition_application_status(
+                self.collection,
+                application_id,
+                "COMPLETED",
+                actor="blockchain",
+                fields={key: value for key, value in update_data.items() if key != "status"},
             )
 
             create_notification(
@@ -564,15 +623,12 @@ class ApplicationService:
             return self.get_application(application_id)
 
         except Exception as exc:
-            self.collection.update_one(
-                {"_id": application_id},
-                {
-                    "$set": {
-                        "status": "BLOCKCHAIN_FAILED",
-                        "rejection_reason": f"Blockchain execution failed: {str(exc)}",
-                        "updated_at": datetime.utcnow().isoformat(),
-                    }
-                },
+            transition_application_status(
+                self.collection,
+                application_id,
+                "BLOCKCHAIN_FAILED",
+                actor="blockchain",
+                fields={"rejection_reason": f"Blockchain execution failed: {str(exc)}"},
             )
             raise APIError(
                 f"Application approved off-chain, but blockchain transaction failed: {str(exc)}",
@@ -592,19 +648,18 @@ class ApplicationService:
             raise APIError("Rejection reason is required", status_code=400)
 
         application = self.get_application(application_id)
-        result = self.collection.update_one(
-            {"_id": application_id},
-            {
-                "$set": {
-                    "status": "REJECTED",
-                    "rejection_reason": rejection_reason,
-                    "admin_remarks": rejection_reason,
-                    "updated_at": datetime.utcnow().isoformat(),
-                }
+        updated = transition_application_status(
+            self.collection,
+            application_id,
+            "REJECTED",
+            actor="admin",
+            fields={
+                "rejection_reason": rejection_reason,
+                "admin_remarks": rejection_reason,
             },
         )
 
-        if result.matched_count == 0:
+        if not updated:
             raise APIError("Application not found", status_code=404)
 
         create_notification(
@@ -620,7 +675,7 @@ class ApplicationService:
             "reason": rejection_reason,
         })
 
-        return self.get_application(application_id)
+        return self._serialize_application(updated)
 
     def request_additional_documents(
         self,
@@ -633,10 +688,8 @@ class ApplicationService:
 
         application = self.get_application(application_id)
         update_fields = {
-            "status": "DOCUMENTS_PENDING",
             "admin_remarks": remarks,
             "correction_requested": True,
-            "updated_at": datetime.utcnow().isoformat(),
         }
         if required_extra:
             existing = list(application.get("required_documents") or [])
@@ -645,7 +698,13 @@ class ApplicationService:
                     existing.append(doc_type)
             update_fields["required_documents"] = existing
 
-        self.collection.update_one({"_id": application_id}, {"$set": update_fields})
+        updated = transition_application_status(
+            self.collection,
+            application_id,
+            "DOCUMENTS_PENDING",
+            actor="admin",
+            fields=update_fields,
+        )
 
         create_notification(
             recipient_id=application.get("applicant_user_id"),
@@ -657,7 +716,7 @@ class ApplicationService:
             related_type="application",
         )
         log_audit("DOCUMENTS_REQUESTED", "application", application_id, {"remarks": remarks})
-        return self.get_application(application_id)
+        return self._serialize_application(updated)
 
     # ---------------------------------------------------------
     # SERIALIZE

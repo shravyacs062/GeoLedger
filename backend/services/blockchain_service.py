@@ -1,7 +1,7 @@
 import json
 import os
 import hashlib
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -72,6 +72,31 @@ class BlockchainService:
         raw = "|".join(str(p) for p in parts) + "|" + datetime.utcnow().isoformat()
         return "0x" + hashlib.sha256(raw.encode()).hexdigest()
 
+    @staticmethod
+    def _simulation_block_number() -> int:
+        from database.client import get_database
+
+        prior_blocks = (
+            int(record.get("block_number") or 0)
+            for record in get_database().transactions.find()
+        )
+        return max(prior_blocks, default=0) + 1
+
+    def _receipt_details(self, receipt: dict) -> dict:
+        block = self.web3.eth.get_block(receipt["blockNumber"])
+        if receipt.get("status", 1) != 1:
+            raise APIError("Blockchain transaction was mined but reverted", status_code=502)
+        return {
+            "block_hash": Web3.to_hex(receipt["blockHash"]),
+            "block_timestamp": datetime.fromtimestamp(
+                int(block["timestamp"]), tz=timezone.utc
+            ).isoformat(),
+            "transaction_index": int(receipt["transactionIndex"]),
+            "gas_used": int(receipt["gasUsed"]),
+            "chain_id": int(self.web3.eth.chain_id),
+            "simulation": False,
+        }
+
     def register_property(self, property_id: str, wallet_address: str) -> dict:
         if self.simulation_mode:
             wallet_address = Web3.to_checksum_address(wallet_address)
@@ -84,11 +109,17 @@ class BlockchainService:
                 "registered_at": int(datetime.utcnow().timestamp()),
                 "exists": True,
             }
+            block_number = self._simulation_block_number()
             return {
                 "property_id": property_id,
                 "wallet_address": wallet_address,
                 "transaction_hash": tx_hash,
-                "block_number": len(self._sim_store),
+                "block_number": block_number,
+                "block_hash": None,
+                "block_timestamp": datetime.now(timezone.utc).isoformat(),
+                "transaction_index": None,
+                "gas_used": None,
+                "chain_id": None,
                 "status": "confirmed",
                 "simulation": True,
             }
@@ -115,6 +146,7 @@ class BlockchainService:
                 "transaction_hash": tx_hash.hex(),
                 "block_number": receipt["blockNumber"],
                 "status": "confirmed",
+                **self._receipt_details(receipt),
             }
         except Exception as exc:
             raise APIError(f"Blockchain registration failed: {str(exc)}", status_code=502)
@@ -191,11 +223,17 @@ class BlockchainService:
             tx_hash = self._sim_hash("transfer", property_id, new_owner)
             stored["owner"] = new_owner
             self._sim_store[property_id] = stored
+            block_number = self._simulation_block_number()
             return {
                 "property_id": property_id,
                 "new_owner": new_owner,
                 "transaction_hash": tx_hash,
-                "block_number": max(1, len(self._sim_store)),
+                "block_number": block_number,
+                "block_hash": None,
+                "block_timestamp": datetime.now(timezone.utc).isoformat(),
+                "transaction_index": None,
+                "gas_used": None,
+                "chain_id": None,
                 "status": "confirmed",
                 "simulation": True,
             }
@@ -222,6 +260,7 @@ class BlockchainService:
                 "transaction_hash": tx_hash.hex(),
                 "block_number": receipt["blockNumber"],
                 "status": "confirmed",
+                **self._receipt_details(receipt),
             }
         except Exception as exc:
             raise APIError(f"Blockchain transfer failed: {str(exc)}", status_code=502)

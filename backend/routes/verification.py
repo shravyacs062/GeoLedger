@@ -15,6 +15,9 @@ verification_bp = Blueprint(
 
 @verification_bp.before_request
 def enforce_verification_permissions():
+    if request.method == "OPTIONS":
+        return
+
     document_id = request.view_args["document_id"]
     require_document_access(document_id)
     if request.endpoint == "verification.review_document" or request.get_json(silent=True) and request.get_json(silent=True).get("status"):

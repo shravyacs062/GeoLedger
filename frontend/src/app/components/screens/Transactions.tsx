@@ -35,6 +35,13 @@ interface Transaction {
   status: TransactionStatus;
   blockchainHash: string;
   blockNumber?: number;
+  blockHash?: string;
+  blockTimestamp?: string;
+  transactionIndex?: number;
+  gasUsed?: number;
+  chainId?: number;
+  simulation: boolean | null;
+  blockLogSaved: boolean;
 }
 
 function TransactionStatusBadge({
@@ -79,6 +86,13 @@ export function Transactions() {
         status: (t.status?.toLowerCase() === 'confirmed' || t.status?.toLowerCase() === 'completed') ? 'completed' : 'pending',
         blockchainHash: t.tx_hash || t.blockchainHash || 'Pending confirmation',
         blockNumber: t.block_number,
+        blockHash: t.block_hash,
+        blockTimestamp: t.block_timestamp,
+        transactionIndex: t.transaction_index,
+        gasUsed: t.gas_used,
+        chainId: t.chain_id,
+        simulation: typeof t.simulation === 'boolean' ? t.simulation : null,
+        blockLogSaved: t.block_log_saved !== false,
       }));
       setTransactions(mapped);
     } catch (err) {
@@ -297,6 +311,63 @@ export function Transactions() {
                           Copy TxHash
                         </Button>
                       )}
+                    </div>
+
+                    <div className="mt-3 rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] p-4">
+                      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                        <p className="text-sm font-semibold text-[#0F172A]">Block Details</p>
+                        <Badge className={transaction.simulation === true
+                          ? 'border-[#FDE68A] bg-[#FFFBEB] text-[#92400E]'
+                          : transaction.simulation === false
+                            ? 'border-[#BBF7D0] bg-[#F0FDF4] text-[#15803D]'
+                            : 'border-[#E2E8F0] bg-[#F8FAFC] text-[#475569]'}>
+                          {transaction.simulation === true
+                            ? 'Development simulation'
+                            : transaction.simulation === false
+                              ? 'On-chain'
+                              : 'Legacy record · source unknown'}
+                        </Badge>
+                      </div>
+                      <div className="grid gap-3 text-xs sm:grid-cols-2">
+                        <div>
+                          <p className="text-[#94A3B8]">Block hash</p>
+                          <p className="mt-1 break-all font-mono text-[#0F766E]">
+                            {transaction.simulation === true
+                              ? 'Not available in simulation mode'
+                              : transaction.blockHash || 'Not recorded for this transaction'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-[#94A3B8]">Block timestamp</p>
+                          <p className="mt-1 text-[#334155]">
+                            {transaction.blockTimestamp
+                              ? new Date(transaction.blockTimestamp).toLocaleString()
+                              : 'Not recorded'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-[#94A3B8]">Transaction index</p>
+                          <p className="mt-1 text-[#334155]">
+                            {transaction.transactionIndex ?? 'Not recorded'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-[#94A3B8]">Gas used</p>
+                          <p className="mt-1 text-[#334155]">
+                            {transaction.gasUsed?.toLocaleString() ?? 'Not recorded'}
+                          </p>
+                        </div>
+                        <div>
+                          <p className="text-[#94A3B8]">Chain ID</p>
+                          <p className="mt-1 text-[#334155]">{transaction.chainId ?? 'Not recorded'}</p>
+                        </div>
+                        <div>
+                          <p className="text-[#94A3B8]">Local block log</p>
+                          <p className="mt-1 text-[#334155]">
+                            {transaction.blockLogSaved ? 'Saved' : 'Could not be saved; see backend log'}
+                          </p>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 ))}

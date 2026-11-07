@@ -13,7 +13,7 @@ import { Label } from '../ui/label';
 
 export function Profile() {
   const { user, refresh } = useAuth();
-  const { address, chainName, connect, hasMetaMask, isConnecting, error: walletError } = useWallet();
+  const { address, chainName, connect, disconnect, isConnected, hasMetaMask, isConnecting, error: walletError } = useWallet();
   const [name, setName] = useState(user?.name || '');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
@@ -52,6 +52,20 @@ export function Profile() {
     }
   };
 
+  const disconnectWallet = async () => {
+    setBusy(true);
+    setError('');
+    setMessage('');
+    try {
+      await disconnect();
+      setMessage('MetaMask disconnected from this browser. Your account remains linked to its verified wallet.');
+    } catch (reason) {
+      setError((reason as Error).message || 'Unable to disconnect MetaMask.');
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <Layout>
       <main className="mx-auto max-w-3xl space-y-6 p-4 lg:p-8">
@@ -74,6 +88,11 @@ export function Profile() {
             <Button variant="outline" onClick={() => void linkWallet()} disabled={busy || isConnecting || !hasMetaMask}>
               <Wallet className="mr-2 h-4 w-4" />{user?.wallet_address ? 'Verify and update wallet' : 'Connect and verify wallet'}
             </Button>
+            {isConnected && (
+              <Button variant="outline" onClick={() => void disconnectWallet()} disabled={busy}>
+                Disconnect MetaMask
+              </Button>
+            )}
           </CardContent>
         </Card>
       </main>

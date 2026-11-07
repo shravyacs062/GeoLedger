@@ -94,6 +94,7 @@ class DocumentService:
             application=application,
             property_record=property_record,
             other_docs_fields=other_fields,
+            document_type=document_type,
         )
 
         verification_checks = [
@@ -120,6 +121,10 @@ class DocumentService:
             initial_status = "REQUIRES_MANUAL_REVIEW"
         else:
             initial_status = "PENDING"
+        failed_checks = [
+            check for check in verification_checks
+            if not check.get("passed")
+        ]
 
         now = datetime.utcnow().isoformat()
 
@@ -134,7 +139,7 @@ class DocumentService:
             "file_size": len(file_bytes),
             "document_hash": document_hash,
             "verification_status": initial_status,
-            "verification_score": 100 if not high_severity_fail else 40,
+            "verification_score": 40 if failed_checks else 100,
             "verification_checks": verification_checks,
             "extracted_fields": extracted,
             "ocr_meta": {
@@ -162,6 +167,17 @@ class DocumentService:
                 ApplicationService().add_submitted_document(
                     application_id, result.inserted_id
                 )
+                if initial_status == "REQUIRES_MANUAL_REVIEW":
+                    from utils.notifications_helper import create_notification
+                    create_notification(
+                        recipient_id=application.get("applicant_user_id") if application else None,
+                        recipient_wallet=application.get("applicant_wallet") if application else None,
+                        title="Document requires manual review",
+                        message=f"{document_type.upper()} could not be fully validated automatically. An authorized reviewer will inspect it.",
+                        notification_type="DOCUMENT_FLAGGED",
+                        related_id=application_id,
+                        related_type="application",
+                    )
 
         except Exception:
             if result:
