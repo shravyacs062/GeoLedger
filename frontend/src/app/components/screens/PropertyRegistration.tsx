@@ -14,6 +14,22 @@ import { Input } from '../ui/input';
 import { Label } from '../ui/label';
 
 const REQUIRED_DOCUMENTS = ['SALE_DEED', 'ID_PROOF', 'MUTATION_CERTIFICATE'];
+const KARNATAKA_BOUNDS: [L.LatLngTuple, L.LatLngTuple] = [[11.5, 74.0], [18.6, 78.7]];
+type PolygonCoordinates = number[][][];
+
+const pointInRing = (longitude: number, latitude: number, ring: number[][]) => {
+  let inside = false;
+  ring.forEach((point, index) => {
+    const previous = ring[(index + ring.length - 1) % ring.length];
+    const [x1, y1] = point;
+    const [x2, y2] = previous;
+    if ((y1 > latitude) !== (y2 > latitude) && longitude < ((x2 - x1) * (latitude - y1)) / (y2 - y1) + x1) inside = !inside;
+  });
+  return inside;
+};
+
+const pointInKarnataka = (longitude: number, latitude: number, polygons: PolygonCoordinates[]) =>
+  polygons.some((polygon) => pointInRing(longitude, latitude, polygon[0]) && !polygon.slice(1).some((hole) => pointInRing(longitude, latitude, hole)));
 
 export function PropertyRegistration() {
   const navigate = useNavigate();
@@ -34,25 +50,50 @@ export function PropertyRegistration() {
   const [error, setError] = useState('');
   const mapContainerRef = useRef<HTMLDivElement | null>(null);
   const boundaryLayerRef = useRef<L.LayerGroup | null>(null);
+  const karnatakaPolygonsRef = useRef<PolygonCoordinates[]>([]);
 
   const update = (key: keyof typeof values, value: string) => setValues((current) => ({ ...current, [key]: value }));
 
   useEffect(() => {
     if (!mapContainerRef.current) return;
 
-    const map = L.map(mapContainerRef.current).setView([12.1812, 76.6852], 16);
+    const map = L.map(mapContainerRef.current, { maxBounds: KARNATAKA_BOUNDS, maxBoundsViscosity: 1.0 }).setView([12.1812, 76.6852], 16);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors',
       maxZoom: 19,
     }).addTo(map);
     const boundaryLayer = L.layerGroup().addTo(map);
     map.on('click', (event) => {
+      if (!pointInKarnataka(event.latlng.lng, event.latlng.lat, karnatakaPolygonsRef.current)) {
+        setError('Parcel boundaries must be marked within Karnataka.');
+        return;
+      }
+      setError('');
       setBoundaryPoints((points) => [...points, [event.latlng.lat, event.latlng.lng]]);
     });
     boundaryLayerRef.current = boundaryLayer;
+    let active = true;
+    fetch('/geojson/karnataka_district_boundaries.json')
+      .then((response) => {
+        if (!response.ok) throw new Error('Karnataka boundary data is unavailable');
+        return response.json() as Promise<GeoJSON.FeatureCollection>;
+      })
+      .then((data) => {
+        if (!active) return;
+        karnatakaPolygonsRef.current = data.features.flatMap((feature) => {
+          const geometry = feature.geometry;
+          if (!geometry) return [];
+          if (geometry.type === 'Polygon') return [geometry.coordinates as PolygonCoordinates];
+          if (geometry.type === 'MultiPolygon') return geometry.coordinates as PolygonCoordinates[];
+          return [];
+        });
+        L.geoJSON(data, { interactive: false, style: { color: '#0F766E', weight: 1.5, fill: false, opacity: 0.65 } }).addTo(map);
+      })
+      .catch(() => setError('Karnataka boundary data could not be loaded. Parcel marking is disabled.'));
     requestAnimationFrame(() => map.invalidateSize());
 
     return () => {
+      active = false;
       map.remove();
       boundaryLayerRef.current = null;
     };
@@ -136,7 +177,7 @@ export function PropertyRegistration() {
           <Card>
             <CardHeader>
               <CardTitle>Parcel boundary</CardTitle>
-              <p className="text-sm text-[#64748B]">Click the map to add at least three boundary points. The last point is connected to the first when saved.</p>
+              <p className="text-sm text-[#64748B]">The map is restricted to Karnataka. Click to add at least three boundary points; the last point is connected to the first when saved.</p>
             </CardHeader>
             <CardContent className="space-y-3">
               <div ref={mapContainerRef} className="h-80 w-full rounded-md border" aria-label="Select parcel boundary on map" />

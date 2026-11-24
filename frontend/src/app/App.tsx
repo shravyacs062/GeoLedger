@@ -71,7 +71,7 @@ export default function App() {
             <Route path="/transfer" element={<Protected><PropertyTransfer /></Protected>} />
             <Route path="/inheritance" element={<Protected><InheritanceTransfer /></Protected>} />
             <Route path="/valuation" element={<Protected><LandValuation /></Protected>} />
-            <Route path="/marketplace" element={<Marketplace />} />
+            <Route path="/marketplace" element={<Protected><Marketplace /></Protected>} />
             <Route path="/verify" element={<Protected><DocumentVerification /></Protected>} />
             <Route path="/map" element={<Protected><PropertySearch /></Protected>} />
             <Route path="/transactions" element={<Protected><Transactions /></Protected>} />

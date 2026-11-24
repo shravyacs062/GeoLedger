@@ -54,7 +54,7 @@ export function PropertySearch() {
     });
   }, []);
 
-  const handleSearch = (queryOverride?: string) => {
+  const handleSearch = (queryOverride?: string, locateOnMap = true) => {
     const q = (queryOverride !== undefined ? queryOverride : searchQuery).trim().toLowerCase();
     if (!q) {
       setFilteredProperties(properties);
@@ -67,6 +67,7 @@ export function PropertySearch() {
     );
     setFilteredProperties(matched);
 
+    if (!locateOnMap || !q) return;
     setGisError('');
     api.gis.getBySurvey(q.toUpperCase()).then((res) => {
       if (res?.geojson) setActiveGeoJson(res.geojson);
@@ -79,6 +80,11 @@ export function PropertySearch() {
         : error instanceof Error ? error.message : 'GIS parcel data is temporarily unavailable.');
     });
   };
+
+  useEffect(() => {
+    const debounce = window.setTimeout(() => handleSearch(searchQuery, false), 180);
+    return () => window.clearTimeout(debounce);
+  }, [searchQuery, properties]);
 
   useEffect(() => {
     if (!mapContainerRef.current) return;
@@ -138,18 +144,18 @@ export function PropertySearch() {
 
   return (
     <Layout>
-      <div className="p-4 lg:p-8">
+      <div className="p-4 sm:p-6 lg:p-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-semibold text-[#0F172A] mb-2">Property Search</h1>
-          <p className="text-[#64748B]">Search and explore registered land parcels using Survey Number or Property ID</p>
+          <h1 className="text-2xl font-semibold text-[#0F172A] sm:text-3xl mb-2">Property Search</h1>
+          <p className="text-sm sm:text-base text-[#64748B]">Search and explore registered land parcels using Survey Number or Property ID</p>
         </div>
 
         <div className="grid lg:grid-cols-3 gap-8">
           {/* Map View */}
           <div className="lg:col-span-2">
             <Card className="border-[#E2E8F0] mb-6">
-              <CardContent className="p-6">
+              <CardContent className="p-4 sm:p-6">
                 <form
                   onSubmit={(e) => {
                     e.preventDefault();
@@ -157,18 +163,19 @@ export function PropertySearch() {
                   }}
                   className="flex flex-col sm:flex-row gap-4"
                 >
-                  <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-[#64748B]" />
+                  <div className="search-input relative flex-1">
+                    <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 z-10 h-5 w-5 -translate-y-1/2 text-[#64748B]" />
                     <Input
                       placeholder="Search by Survey Number or Property ID..."
                       className="pl-10 h-12 border-[#E2E8F0]"
+                      style={{ paddingLeft: '3rem' }}
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                     />
                   </div>
-                  <Button type="submit" className="bg-[#0F766E] hover:bg-[#0F766E]/90 h-12 px-8">
+                  <Button type="submit" className="h-12 w-full bg-[#0F766E] px-5 hover:bg-[#0F766E]/90 sm:w-auto">
                     <Search className="w-4 h-4 mr-2" />
-                    Search
+                    Locate on map
                   </Button>
                 </form>
               </CardContent>
@@ -191,7 +198,7 @@ export function PropertySearch() {
                 <div className="aspect-video bg-gradient-to-br from-[#0F766E]/20 to-[#38BDF8]/20 rounded-xl relative overflow-hidden">
                   <div ref={mapContainerRef} className="absolute inset-0 z-0 w-full h-full" />
 
-                  <div className="absolute bottom-4 left-4 bg-white rounded-lg shadow-md p-3 z-10 pointer-events-auto">
+                  <div className="absolute bottom-3 left-3 max-w-[calc(100%-1.5rem)] rounded-lg bg-white p-3 shadow-md z-10 pointer-events-auto sm:bottom-4 sm:left-4">
                     <p className="text-xs font-medium text-[#0F172A] mb-2">Parcel source</p>
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
@@ -218,11 +225,11 @@ export function PropertySearch() {
                     <div
                       key={index}
                       onClick={() => handleSearch(property.id)}
-                      className="border border-[#E2E8F0] rounded-lg p-4 hover:border-[#0F766E] transition-colors cursor-pointer"
+                      className="cursor-pointer rounded-lg border border-[#E2E8F0] p-4 transition-colors hover:border-[#0F766E]"
                     >
                       <div className="flex items-start justify-between mb-3">
                         <div>
-                          <p className="font-medium text-[#0F172A]">{property.id}</p>
+                          <p className="break-words font-medium text-[#0F172A]">{property.id}</p>
                           <span className={`inline-block px-2 py-0.5 rounded text-xs mt-1 ${
                             property.status === 'Verified'
                               ? 'bg-[#16A34A]/10 text-[#16A34A]'
@@ -257,7 +264,7 @@ export function PropertySearch() {
                         </div>
                       </div>
 
-                      <div className="flex gap-2 mt-4">
+                      <div className="mt-4 flex flex-col gap-2 sm:flex-row">
                         <Link to={`/properties/${encodeURIComponent(property.id)}`} className="flex-1">
                           <Button variant="outline" className="w-full border-[#E2E8F0]">
                             View Details

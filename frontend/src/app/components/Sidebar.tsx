@@ -20,7 +20,6 @@ const userItems = [
 
 const adminItems = [
   { icon: Home, label: 'Admin Dashboard', path: '/admin' },
-  { icon: ClipboardList, label: 'Applications', path: '/applications' },
   { icon: Building2, label: 'Properties', path: '/properties' },
   { icon: ShieldCheck, label: 'Document Review', path: '/verify' },
 ];
@@ -82,25 +81,26 @@ export function Sidebar() {
             <Icon className={`h-[18px] w-[18px] shrink-0 transition-colors ${active(path) ? 'text-teal-100' : 'text-slate-400 group-hover:text-teal-200'}`} />{label === 'Dashboard' ? t('dashboard') : label === 'My Properties' ? t('properties') : label === 'Marketplace' ? t('marketplace') : label === 'Applications' ? t('applications') : label === 'Property Search' ? t('search') : label}
           </Link>
         ))}
-        <details open={moreOpen} className="pt-2">
-          <summary
-            onClick={(event) => {
-              event.preventDefault();
-              setMoreOpenState({ pathname: location.pathname, open: !moreOpen });
-            }}
-            className="flex cursor-pointer list-none items-center justify-between rounded-xl px-4 py-2.5 text-sm text-[#CBD5E1] hover:bg-white/[0.07] hover:text-white"
+        <div className="pt-2">
+          <button
+            type="button"
+            aria-expanded={moreOpen}
+            onClick={() => setMoreOpenState({ pathname: location.pathname, open: !moreOpen })}
+            className="flex w-full items-center justify-between rounded-xl px-4 py-2.5 text-left text-sm text-[#CBD5E1] transition-colors hover:bg-white/[0.07] hover:text-white"
           >
             {t('more')}
             <ChevronDown className={`h-4 w-4 transition-transform ${moreOpen ? 'rotate-180' : ''}`} />
-          </summary>
-          <div className="mt-1 space-y-1">
+          </button>
+          <div className={`grid transition-[grid-template-rows,opacity] duration-200 ${moreOpen ? 'mt-1 grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
+            <div className="overflow-hidden space-y-1">
             {moreItems.map(({ icon: Icon, label, path }) => (
               <Link key={path} to={path} onClick={() => setMoreOpenState({ pathname: location.pathname, open: true })} className={`group flex items-center gap-3 rounded-xl px-4 py-2 text-sm transition-colors ${active(path) ? 'bg-teal-700/90 text-white' : 'text-[#CBD5E1] hover:bg-white/[0.07] hover:text-white'}`}>
                 <Icon className="h-4 w-4 shrink-0 text-slate-400 group-hover:text-teal-200" />{label}
               </Link>
             ))}
+            </div>
           </div>
-        </details>
+        </div>
       </nav>
       <div className="space-y-2 border-t border-white/10 p-4">
         <button type="button" onClick={() => setLanguage(language === 'en' ? 'kn' : 'en')} className="w-full rounded-xl border border-white/10 px-3 py-2 text-left text-sm text-teal-100 hover:bg-white/[.07]">{t('kannada')}</button>

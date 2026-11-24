@@ -1,6 +1,9 @@
 import re
 import zipfile
 import math
+import json
+from pathlib import Path
+from functools import lru_cache
 from io import BytesIO
 from bson import ObjectId
 
@@ -8,6 +11,47 @@ from config import Config
 from utils.errors import APIError
 
 WALLET_ADDRESS_REGEX = re.compile(r"^0x[a-fA-F0-9]{40}$")
+# Karnataka's geographic extent. This is deliberately enforced server-side as
+# well as in the map UI; client-side map bounds can be bypassed.
+KARNATAKA_LATITUDE_RANGE = (11.5, 18.6)
+KARNATAKA_LONGITUDE_RANGE = (74.0, 78.7)
+
+
+@lru_cache(maxsize=1)
+def _karnataka_polygons() -> list:
+    """Load public Karnataka district boundaries once for state-outline checks."""
+    path = Path(__file__).resolve().parent.parent / "geojson" / "karnataka_district_boundaries.json"
+    with path.open(encoding="utf-8") as source:
+        collection = json.load(source)
+    polygons = []
+    for feature in collection.get("features", []):
+        geometry = feature.get("geometry") or {}
+        if geometry.get("type") == "Polygon":
+            polygons.append(geometry.get("coordinates") or [])
+        elif geometry.get("type") == "MultiPolygon":
+            polygons.extend(geometry.get("coordinates") or [])
+    return polygons
+
+
+def _point_in_ring(longitude: float, latitude: float, ring: list) -> bool:
+    inside = False
+    for index, point in enumerate(ring):
+        previous = ring[index - 1]
+        x1, y1 = point[:2]
+        x2, y2 = previous[:2]
+        crosses = (y1 > latitude) != (y2 > latitude)
+        if crosses and longitude < (x2 - x1) * (latitude - y1) / (y2 - y1) + x1:
+            inside = not inside
+    return inside
+
+
+def _point_in_karnataka(longitude: float, latitude: float) -> bool:
+    for polygon in _karnataka_polygons():
+        if not polygon or not _point_in_ring(longitude, latitude, polygon[0]):
+            continue
+        if not any(_point_in_ring(longitude, latitude, hole) for hole in polygon[1:]):
+            return True
+    return False
 
 
 def validate_wallet_address(address: str) -> str:
@@ -50,6 +94,12 @@ def validate_polygon_boundary(boundary: dict) -> dict:
             or not -90 <= latitude <= 90
         ):
             raise APIError("Boundary coordinates must be finite longitude/latitude values", status_code=400)
+        if not (
+            KARNATAKA_LONGITUDE_RANGE[0] <= longitude <= KARNATAKA_LONGITUDE_RANGE[1]
+            and KARNATAKA_LATITUDE_RANGE[0] <= latitude <= KARNATAKA_LATITUDE_RANGE[1]
+            and _point_in_karnataka(longitude, latitude)
+        ):
+            raise APIError("Property boundary must be located within Karnataka", status_code=400)
         normalized.append([float(longitude), float(latitude)])
 
     if normalized[0] != normalized[-1]:

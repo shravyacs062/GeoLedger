@@ -7,6 +7,7 @@ body {
     #f6f8fb;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  overflow-x: hidden;
 }
 
 [lang="kn"] body { font-family: "Noto Sans Kannada", "Segoe UI", sans-serif; }
@@ -40,6 +41,11 @@ textarea {
 }
 
 input[data-slot="input"] { border-color: #cbd5e1; background-color: #fff; }
+.search-input input[data-slot="input"] { padding-left: 2.75rem !important; }
+
+/* Prevent long identifiers and wallet addresses from widening mobile cards. */
+[data-slot="card"],
+[data-slot="card"] * { min-width: 0; }
 input::placeholder, textarea::placeholder { color: #64748b; opacity: 1; }
 select:hover, input[data-slot="input"]:hover, textarea:hover { border-color: #94a3b8; }
 

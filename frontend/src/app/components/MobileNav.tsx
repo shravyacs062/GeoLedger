@@ -14,7 +14,7 @@ export function MobileNav() {
   const items = user?.role === 'admin'
     ? [
       { icon: LayoutDashboard, label: 'Admin', path: '/admin' },
-      { icon: FileText, label: 'Applications', path: '/applications' },
+      { icon: FileText, label: 'Review', path: '/verify' },
       { icon: User, label: 'Users', path: '/admin/users' },
       { icon: Bell, label: 'Alerts', path: '/notifications' },
     ]
@@ -62,14 +62,14 @@ export function MobileNav() {
           </button>
         </div>
       )}
-      <div className="flex h-16 items-center justify-around">
+      <div className="flex h-16 items-center justify-around pb-[env(safe-area-inset-bottom)]">
         {items.map(({ icon: Icon, label, path }) => (
-          <Link key={path} to={path} onClick={() => setMoreOpen(false)} className={`flex flex-col items-center gap-1 px-2 py-2 ${location.pathname === path ? 'text-[#0F766E]' : 'text-[#64748B]'}`}>
-            <Icon className="h-5 w-5" /><span className="text-xs">{label}</span>
+          <Link key={path} to={path} onClick={() => setMoreOpen(false)} className={`flex min-w-0 flex-col items-center gap-1 px-1 py-2 ${location.pathname === path ? 'text-[#0F766E]' : 'text-[#64748B]'}`}>
+            <Icon className="h-5 w-5 shrink-0" /><span className="max-w-[68px] truncate whitespace-nowrap text-[10px] sm:text-xs">{label}</span>
           </Link>
         ))}
-        <button type="button" aria-expanded={moreOpen} onClick={() => setMoreOpen((open) => !open)} className={`flex flex-col items-center gap-1 px-2 py-2 ${moreOpen ? 'text-[#0F766E]' : 'text-[#64748B]'}`}>
-          {moreOpen ? <ChevronUp className="h-5 w-5" /> : <MoreHorizontal className="h-5 w-5" />}<span className="text-xs">More</span>
+        <button type="button" aria-expanded={moreOpen} onClick={() => setMoreOpen((open) => !open)} className={`flex min-w-0 flex-col items-center gap-1 px-1 py-2 ${moreOpen ? 'text-[#0F766E]' : 'text-[#64748B]'}`}>
+          {moreOpen ? <ChevronUp className="h-5 w-5" /> : <MoreHorizontal className="h-5 w-5" />}<span className="max-w-[68px] truncate whitespace-nowrap text-[10px] sm:text-xs">More</span>
         </button>
       </div>
     </nav>

@@ -51,7 +51,13 @@ class MarketplaceService:
             rows = [x for x in rows if x.get("district", "").lower() == district.lower()]
         if land_type:
             rows = [x for x in rows if x.get("land_type", "").lower() == land_type.lower()]
-        key, reverse = ("asking_price", sort == "price_desc") if sort.startswith("price") else ("created_at", True)
+        sort_options = {
+            "price_asc": ("asking_price", False),
+            "price_desc": ("asking_price", True),
+            "area_desc": ("area", True),
+            "newest": ("created_at", True),
+        }
+        key, reverse = sort_options.get(sort, sort_options["newest"])
         rows.sort(key=lambda x: x.get(key, 0) or 0, reverse=reverse)
         return [self._public(x) for x in rows]
 
