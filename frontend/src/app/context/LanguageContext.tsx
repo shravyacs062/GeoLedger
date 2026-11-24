@@ -20,7 +20,7 @@ const kn: Record<string, string> = {
   'Review applications and documents before on-chain registration.': 'ಆನ್-ಚೈನ್ ನೋಂದಣಿಗೆ ಮುನ್ನ ಅರ್ಜಿಗಳು ಮತ್ತು ದಾಖಲೆಗಳನ್ನು ಪರಿಶೀಲಿಸಿ.',
   'Users': 'ಬಳಕೆದಾರರು', 'Pending applications': 'ಬಾಕಿ ಇರುವ ಅರ್ಜಿಗಳು', 'Documents to review': 'ಪರಿಶೀಲಿಸಬೇಕಾದ ದಾಖಲೆಗಳು',
   'Search survey no., application ID, owner, village or district': 'ಸರ್ವೆ ಸಂಖ್ಯೆ, ಅರ್ಜಿ ಐಡಿ, ಮಾಲೀಕ, ಗ್ರಾಮ ಅಥವಾ ಜಿಲ್ಲೆಯನ್ನು ಹುಡುಕಿ',
-  'Search applications': 'ಅರ್ಜಿಗಳನ್ನು ಹುಡುಕಿ', 'Loading applications…': 'ಅರ್ಜಿಗಳು ಲೋಡ್ ಆಗುತ್ತಿವೆ…', 'No applications match this search.': 'ಈ ಹುಡುಕಾಟಕ್ಕೆ ಹೊಂದುವ ಅರ್ಜಿಗಳಿಲ್ಲ.',
+  'Search applications': 'ಅರ್ಜಿಗಳನ್ನು ಹುಡುಕಿ', 'No applications match this search.': 'ಈ ಹುಡುಕಾಟಕ್ಕೆ ಹೊಂದುವ ಅರ್ಜಿಗಳಿಲ್ಲ.',
   'Survey': 'ಸರ್ವೆ', 'Type': 'ಪ್ರಕಾರ', 'Applicant': 'ಅರ್ಜಿದಾರ', 'Status': 'ಸ್ಥಿತಿ', 'Actions': 'ಕ್ರಿಯೆಗಳು', 'Details': 'ವಿವರಗಳು', 'Approve': 'ಅನುಮೋದಿಸಿ', 'Accounts': 'ಖಾತೆಗಳು',
   'No documents uploaded.': 'ಯಾವುದೇ ದಾಖಲೆಗಳನ್ನು ಅಪ್‌ಲೋಡ್ ಮಾಡಿಲ್ಲ.', 'Document': 'ದಾಖಲೆ', 'Application': 'ಅರ್ಜಿ', 'Review': 'ಪರಿಶೀಲನೆ',
   'Verify': 'ಪರಿಶೀಲಿಸಿ', 'Reject': 'ತಿರಸ್ಕರಿಸಿ', 'Unable to load Admin data.': 'ನಿರ್ವಾಹಕ ಮಾಹಿತಿಯನ್ನು ಲೋಡ್ ಮಾಡಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.',
@@ -33,7 +33,7 @@ const kn: Record<string, string> = {
   'Unable to verify this document.': 'ಈ ದಾಖಲೆಯನ್ನು ಪರಿಶೀಲಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.', 'Integrity check passed. Admin authenticity review is still required.': 'ಸಮಗ್ರತೆ ಪರಿಶೀಲನೆ ಯಶಸ್ವಿಯಾಗಿದೆ. ನಿರ್ವಾಹಕರ ಸತ್ಯಾಸತ್ಯತಾ ಪರಿಶೀಲನೆ ಇನ್ನೂ ಅಗತ್ಯವಿದೆ.',
   'Status:': 'ಸ್ಥಿತಿ:', 'Extracted fields (unverified)': 'ಹೊರತೆಗೆಯಲಾದ ಕ್ಷೇತ್ರಗಳು (ಪರಿಶೀಲಿಸದ)', 'Passed': 'ಯಶಸ್ವಿಯಾಗಿದೆ', 'Flagged': 'ಗುರುತಿಸಲಾಗಿದೆ', 'REQUIRES MANUAL REVIEW': 'ಹಸ್ತಚಾಲಿತ ಪರಿಶೀಲನೆ ಅಗತ್ಯ', 'REQUIRES_MANUAL_REVIEW': 'ಹಸ್ತಚಾಲಿತ ಪರಿಶೀಲನೆ ಅಗತ್ಯ',
   'NEW REGISTRATION': 'ಹೊಸ ನೋಂದಣಿ', 'OWNERSHIP TRANSFER': 'ಮಾಲೀಕತ್ವ ವರ್ಗಾವಣೆ', 'INHERITANCE TRANSFER': 'ಪಾರಂಪರಿಕ ವರ್ಗಾವಣೆ',
-  'User Management': 'ಬಳಕೆದಾರ ನಿರ್ವಹಣೆ', 'View user accounts and assign user or administrator access': 'ಬಳಕೆದಾರ ಖಾತೆಗಳನ್ನು ವೀಕ್ಷಿಸಿ ಮತ್ತು ಬಳಕೆದಾರ ಅಥವಾ ನಿರ್ವಾಹಕ ಪ್ರವೇಶವನ್ನು ನಿಯೋಜಿಸಿ',
+  'View user accounts and assign user or administrator access': 'ಬಳಕೆದಾರ ಖಾತೆಗಳನ್ನು ವೀಕ್ಷಿಸಿ ಮತ್ತು ಬಳಕೆದಾರ ಅಥವಾ ನಿರ್ವಾಹಕ ಪ್ರವೇಶವನ್ನು ನಿಯೋಜಿಸಿ',
   'Loading users…': 'ಬಳಕೆದಾರರು ಲೋಡ್ ಆಗುತ್ತಿದ್ದಾರೆ…', 'Failed to load users': 'ಬಳಕೆದಾರರನ್ನು ಲೋಡ್ ಮಾಡಲು ವಿಫಲವಾಗಿದೆ', 'Failed to update role': 'ಪಾತ್ರವನ್ನು ನವೀಕರಿಸಲು ವಿಫಲವಾಗಿದೆ',
   'Seeded demo accounts and registered citizens': 'ಮಾದರಿ ಖಾತೆಗಳು ಮತ್ತು ನೋಂದಾಯಿತ ನಾಗರಿಕರು', 'Unnamed user': 'ಹೆಸರಿಸದ ಬಳಕೆದಾರ', 'No email on record': 'ದಾಖಲಾದ ಇಮೇಲ್ ಇಲ್ಲ', 'No wallet': 'ವಾಲೆಟ್ ಇಲ್ಲ', 'No users found.': 'ಯಾವುದೇ ಬಳಕೆದಾರರು ಕಂಡುಬಂದಿಲ್ಲ',
   'user': 'ಬಳಕೆದಾರ', 'admin': 'ನಿರ್ವಾಹಕ',
@@ -54,7 +54,8 @@ function translatePage(language: Language) {
     if (!textSources.has(node)) textSources.set(node, source);
     const prefix = source.match(/^\s*/)?.[0] || '';
     const suffix = source.match(/\s*$/)?.[0] || '';
-    node.nodeValue = `${prefix}${translate(source.trim())}${suffix}`;
+    const translated = `${prefix}${translate(source.trim())}${suffix}`;
+    if (node.nodeValue !== translated) node.nodeValue = translated;
   });
   document.querySelectorAll<HTMLElement>('*').forEach((element) => {
     if (ignored(element)) return;
@@ -64,7 +65,8 @@ function translatePage(language: Language) {
       const key = `i18nSource${name}`;
       const source = element.dataset[key] || current;
       element.dataset[key] = source;
-      element.setAttribute(name, translate(source));
+      const translated = translate(source);
+      if (current !== translated) element.setAttribute(name, translated);
     });
   });
 }
@@ -80,10 +82,21 @@ export const LanguageProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     localStorage.setItem('geoledger-language', language);
     document.documentElement.lang = language === 'kn' ? 'kn' : 'en';
-    const observer = new MutationObserver(() => { observer.disconnect(); translatePage(language); observer.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: attributeNames }); });
-    translatePage(language);
+    let frame = 0;
+    const scheduleTranslation = () => {
+      if (frame) return;
+      frame = window.requestAnimationFrame(() => {
+        frame = 0;
+        translatePage(language);
+      });
+    };
+    // Keep observing React commits. The previous implementation disconnected
+    // the observer while translating, which could lose a batch of nodes during
+    // a language switch and leave a page partially translated.
+    const observer = new MutationObserver(scheduleTranslation);
+    scheduleTranslation();
     observer.observe(document.body, { childList: true, subtree: true, characterData: true, attributes: true, attributeFilter: attributeNames });
-    return () => observer.disconnect();
+    return () => { observer.disconnect(); if (frame) window.cancelAnimationFrame(frame); };
   }, [language]);
   return <LanguageContext.Provider value={{ language, setLanguage, t: key => (language === 'kn' ? kn[key] : undefined) || phrases[language][key] || phrases.en[key] || key }}>{children}</LanguageContext.Provider>;
 };

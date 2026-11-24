@@ -71,7 +71,7 @@ export function Sidebar() {
     <aside className="fixed left-0 top-0 flex h-screen w-64 flex-col bg-gradient-to-b from-[#111d32] via-[#0F172A] to-[#101827] text-white shadow-[8px_0_30px_rgba(15,23,42,0.08)]">
       <div className="border-b border-white/10 px-6 py-7">
         <Link to={admin ? '/admin' : '/dashboard'} className="flex items-center gap-3">
-          <span className="rounded-xl bg-gradient-to-br from-teal-400 to-teal-700 p-2.5 shadow-lg shadow-teal-950/30"><Map className="h-5 w-5" /></span>
+          <img src="/geoledger-logo.jpeg" alt="GeoLedger" className="h-11 w-11 rounded-xl bg-white object-contain p-0.5 shadow-lg shadow-teal-950/30" />
           <span><span className="block font-semibold tracking-tight">GeoLedger</span><span className="text-xs text-[#94A3B8]">{admin ? 'Admin Portal' : 'Land Registry'}</span></span>
         </Link>
       </div>

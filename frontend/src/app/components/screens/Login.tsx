@@ -1,6 +1,6 @@
 import { FormEvent, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Loader2, Map, ShieldCheck } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { useAuth } from '../../context/useAuth';
 
 function SignInForm({ role }: { role: 'user' | 'admin' }) {
@@ -39,9 +39,7 @@ function SignInForm({ role }: { role: 'user' | 'admin' }) {
     <main className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-4">
       <section className="w-full max-w-md rounded-2xl border border-[#E2E8F0] bg-white p-8 shadow-lg">
         <div className="mb-7 text-center">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-xl bg-[#0F766E] text-white">
-            {role === 'admin' ? <ShieldCheck /> : <Map />}
-          </div>
+          <img src="/geoledger-logo.jpeg" alt="GeoLedger" className="mx-auto mb-4 h-16 w-16 rounded-2xl bg-white object-contain p-0.5 shadow-md" />
           <h1 className="text-2xl font-semibold text-[#0F172A]">GeoLedger {role === 'admin' ? 'Admin' : ''}</h1>
           <p className="mt-1 text-sm text-[#64748B]">
             {isRegistering ? 'Create your user account' : `Sign in to your ${role} account`}

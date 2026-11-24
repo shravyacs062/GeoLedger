@@ -9,7 +9,69 @@ DEMO_LISTINGS = [
     ("DEMO-MYS-204", "Residential corner site", "Mysuru", "Mysuru", "Residential", 2400, 7200000),
     ("DEMO-HSN-087", "Irrigated farm land", "Hassan", "Belur", "Agricultural", 1.6, 9600000),
     ("DEMO-MNG-032", "Coastal residential plot", "Dakshina Kannada", "Mangaluru", "Residential", 1800, 5400000),
+    ("DEMO-BLR-118", "East-facing villa plot", "Bengaluru Urban", "Bengaluru East", "Residential", 1500, 11800000),
+    ("DEMO-BLR-236", "Whitefield development parcel", "Bengaluru Urban", "Bengaluru East", "Residential", 2400, 17600000),
+    ("DEMO-MYS-319", "Gated layout site near Hunsur Road", "Mysuru", "Mysuru", "Residential", 1200, 4680000),
+    ("DEMO-MYS-411", "Orchard land outside Nanjangud", "Mysuru", "Nanjangud", "Agricultural", 3.1, 11200000),
+    ("DEMO-UBL-064", "North-facing residential site", "Dharwad", "Hubballi", "Residential", 1800, 6120000),
+    ("DEMO-BGM-173", "Sugarcane cultivation land", "Belagavi", "Gokak", "Agricultural", 4.5, 13500000),
+    ("DEMO-SHM-092", "Arecanut garden holding", "Shivamogga", "Sagara", "Agricultural", 2.8, 12400000),
+    ("DEMO-CKM-145", "Hillside plantation parcel", "Chikkamagaluru", "Mudigere", "Agricultural", 2.1, 16800000),
+    ("DEMO-UDU-056", "Residential site near Manipal", "Udupi", "Udupi", "Residential", 1650, 7450000),
+    ("DEMO-TMK-208", "Dry land investment parcel", "Tumakuru", "Gubbi", "Agricultural", 3.75, 8700000),
+    ("DEMO-BLR-487", "Yelahanka corner plot", "Bengaluru Urban", "Bengaluru North", "Residential", 1350, 9850000),
+    ("DEMO-RMN-074", "Mango orchard parcel", "Ramanagara", "Channapatna", "Agricultural", 2.6, 7800000),
+    ("DEMO-BDK-121", "Highway-access farm land", "Vijayapura", "Basavana Bagewadi", "Agricultural", 5.0, 6900000),
+    ("DEMO-KLR-184", "Kolar residential layout site", "Kolar", "Kolar", "Residential", 2000, 5800000),
+    ("DEMO-DVG-099", "Irrigated coconut farm", "Davanagere", "Harihar", "Agricultural", 3.4, 10400000),
+    ("DEMO-KPL-152", "Tungabhadra command area land", "Koppal", "Gangavathi", "Agricultural", 4.2, 9200000),
 ]
+
+# Current Karnataka districts and a familiar taluk/city label used solely for
+# synthetic marketplace samples. These are not property records or addresses.
+DISTRICT_LOCATIONS = [
+    ("Bagalkote", "Bagalkote"), ("Ballari", "Ballari"), ("Belagavi", "Belagavi"),
+    ("Bengaluru Rural", "Devanahalli"), ("Bengaluru Urban", "Bengaluru East"),
+    ("Bidar", "Bidar"), ("Chamarajanagar", "Kollegal"), ("Chikkaballapura", "Chikkaballapura"),
+    ("Chikkamagaluru", "Chikkamagaluru"), ("Chitradurga", "Chitradurga"),
+    ("Dakshina Kannada", "Mangaluru"), ("Davanagere", "Davanagere"), ("Dharwad", "Hubballi"),
+    ("Gadag", "Gadag"), ("Hassan", "Hassan"), ("Haveri", "Haveri"),
+    ("Kalaburagi", "Kalaburagi"), ("Kodagu", "Madikeri"), ("Kolar", "Kolar"),
+    ("Koppal", "Gangavathi"), ("Mandya", "Mandya"), ("Mysuru", "Mysuru"),
+    ("Raichur", "Raichur"), ("Ramanagara", "Ramanagara"), ("Shivamogga", "Shivamogga"),
+    ("Tumakuru", "Tumakuru"), ("Udupi", "Udupi"), ("Uttara Kannada", "Sirsi"),
+    ("Vijayapura", "Vijayapura"), ("Vijayanagara", "Hospet"), ("Yadgir", "Yadgir"),
+]
+
+SAMPLE_PATTERNS = [
+    ("East-facing residential site", "Residential", 1200, 1_000_000),
+    ("Corner residential plot", "Residential", 1500, 1_550_000),
+    ("Established layout site", "Residential", 1800, 2_050_000),
+    ("Irrigated agricultural holding", "Agricultural", 1.75, 2_600_000),
+    ("Farm land with approach road", "Agricultural", 2.4, 3_050_000),
+    ("Orchard cultivation parcel", "Agricultural", 3.15, 3_650_000),
+    ("Mixed-use commercial plot", "Commercial", 1100, 4_100_000),
+    ("Main-road commercial site", "Commercial", 1450, 4_750_000),
+    ("Gated community plot", "Residential", 2400, 5_300_000),
+    ("Dry land investment parcel", "Agricultural", 4.25, 5_850_000),
+]
+
+
+def generated_demo_listings():
+    """Generate ten stable, clearly synthetic samples for every district."""
+    for district_index, (district, taluk) in enumerate(DISTRICT_LOCATIONS, start=1):
+        prefix = "".join(part[0] for part in district.upper().split())[:4]
+        district_adjustment = district_index * 175_000
+        for pattern_index, (title, land_type, area, base_price) in enumerate(SAMPLE_PATTERNS, start=1):
+            yield (
+                f"DEMO-{prefix}-{district_index:02d}{pattern_index:02d}",
+                f"{title}, {taluk}",
+                district,
+                taluk,
+                land_type,
+                area,
+                base_price + district_adjustment + (pattern_index * 85_000),
+            )
 
 
 class MarketplaceService:
@@ -20,10 +82,12 @@ class MarketplaceService:
         self._seed_demos()
 
     def _seed_demos(self):
-        if self.listings.count_documents({}) > 0:
-            return
         now = datetime.utcnow().isoformat()
-        for survey, title, district, taluk, land_type, area, price in DEMO_LISTINGS:
+        for survey, title, district, taluk, land_type, area, price in [*DEMO_LISTINGS, *generated_demo_listings()]:
+            # Add only missing samples so existing user-created listings and prior
+            # seeded records remain untouched when the catalogue is expanded.
+            if self.listings.find_one({"listing_id": f"LIST-{survey}"}):
+                continue
             self.listings.insert_one({
                 "listing_id": f"LIST-{survey}", "property_id": None, "survey_number": survey,
                 "title": title, "district": district, "taluk": taluk, "village": "Demo locality",

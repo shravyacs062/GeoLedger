@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Shield, AlertCircle, Loader2, Map } from 'lucide-react';
+import { AlertCircle, Loader2, Map } from 'lucide-react';
 import { isAxiosError } from 'axios';
 
 import { Button } from '../ui/button';
@@ -49,9 +49,7 @@ export function AdminLogin() {
       <div className="pointer-events-none absolute -right-20 bottom-0 h-80 w-80 rounded-full bg-sky-500/10 blur-3xl" />
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-[#0F766E] rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <Shield className="w-9 h-9 text-white" />
-          </div>
+          <img src="/geoledger-logo.jpeg" alt="GeoLedger" className="mx-auto mb-4 h-16 w-16 rounded-2xl bg-white object-contain p-0.5 shadow-lg shadow-teal-950/20" />
           <h1 className="text-3xl font-semibold tracking-tight text-white">GeoLedger Admin</h1>
           <p className="mt-1 text-[#94A3B8]">Secure Admin portal</p>
         </div>

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Map, AlertCircle, Loader2, UserPlus } from 'lucide-react';
+import { AlertCircle, Loader2, UserPlus } from 'lucide-react';
 import { isAxiosError } from 'axios';
 
 import { Button } from '../ui/button';
@@ -53,9 +53,7 @@ export function UserLogin() {
     <div className="flex min-h-screen items-center justify-center bg-[radial-gradient(ellipse_at_50%_0%,#ccfbf1_0%,#f6f8fb_48%)] p-4">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-teal-500 to-teal-800 text-white shadow-lg shadow-teal-900/20">
-            <Map className="h-8 w-8" />
-          </div>
+          <img src="/geoledger-logo.jpeg" alt="GeoLedger" className="mx-auto mb-4 h-16 w-16 rounded-2xl bg-white object-contain p-0.5 shadow-lg shadow-teal-900/20" />
           <h1 className="text-3xl font-semibold tracking-tight text-[#0F172A]">GeoLedger</h1>
           <p className="text-[#64748B]">Citizen / Property Owner Login</p>
         </div>

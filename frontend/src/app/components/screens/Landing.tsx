@@ -12,7 +12,7 @@ export function Landing() {
   return (
     <main className="min-h-screen bg-[#F6F8FB] text-[#0F172A]">
       <header className="sticky top-0 z-20 flex items-center justify-between border-b border-slate-200/80 bg-white/90 px-5 py-4 backdrop-blur-xl sm:px-10">
-        <Link to="/" className="flex items-center gap-3 font-semibold tracking-tight"><span className="rounded-xl bg-gradient-to-br from-teal-500 to-teal-800 p-2.5 text-white shadow-md shadow-teal-900/15"><Map className="h-5 w-5" /></span>GeoLedger</Link>
+        <Link to="/" className="flex items-center gap-3 font-semibold tracking-tight"><img src="/geoledger-logo.jpeg" alt="GeoLedger" className="h-11 w-11 rounded-xl bg-white object-contain p-0.5 shadow-md shadow-teal-900/15" />GeoLedger</Link>
         <Link to={user ? home : '/login'}><Button className="rounded-xl bg-[#0F766E] shadow-sm shadow-teal-900/15 hover:bg-[#115E59]">{user ? 'Open dashboard' : 'Sign in'}</Button></Link>
       </header>
       <section className="relative isolate mx-auto max-w-7xl overflow-hidden px-5 py-20 text-center sm:py-28">

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { CheckCircle2, Map } from 'lucide-react';
+import { CheckCircle2 } from 'lucide-react';
 import { api } from '../../../services/api';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 
@@ -38,7 +38,7 @@ export function PublicVerification() {
   return (
     <main className="min-h-screen bg-[#F8FAFC] p-4 sm:p-8">
       <div className="mx-auto max-w-2xl space-y-6">
-        <header className="flex items-center gap-3"><div className="rounded-lg bg-[#0F766E] p-2 text-white"><Map /></div><div><h1 className="text-xl font-semibold">GeoLedger public verification</h1><p className="text-sm text-[#64748B]">Read-only property record</p></div></header>
+        <header className="flex items-center gap-3"><img src="/geoledger-logo.jpeg" alt="GeoLedger" className="h-11 w-11 rounded-lg bg-white object-contain p-0.5 shadow-sm" /><div><h1 className="text-xl font-semibold">GeoLedger public verification</h1><p className="text-sm text-[#64748B]">Read-only property record</p></div></header>
         {error && <Card><CardContent className="p-6"><p role="alert" className="text-sm text-red-700">{error}</p></CardContent></Card>}
         {!record && !error && <p className="py-12 text-center text-sm text-[#64748B]">Loading verification record…</p>}
         {record && <Card><CardHeader><div className="flex items-center gap-2"><CheckCircle2 className="h-5 w-5 text-[#0F766E]" /><CardTitle>{record.survey_number}</CardTitle></div><p className="text-sm text-[#64748B]">Property ID: {record.property_id}</p></CardHeader>
