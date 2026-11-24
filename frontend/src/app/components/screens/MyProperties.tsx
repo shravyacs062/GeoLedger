@@ -136,10 +136,10 @@ export function MyProperties() {
               : <Link to="/applications/new" className="mt-4 inline-block"><Button className="bg-[#0F766E] hover:bg-[#115E59]">Start an application</Button></Link>}
           </Card>
         ) : (
-          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-6 xl:grid-cols-2">
             {filteredProperties.map((prop) => (
               <Card key={prop.property_id || prop._id} className="border-[#E2E8F0] transition-shadow hover:shadow-sm">
-                <CardHeader className="pb-3">
+                <CardHeader className="px-6 pb-4 pt-6">
                   <div className="flex items-start justify-between">
                     <div>
                       <span className="text-xs font-semibold uppercase text-[#0F766E]">Survey Number</span>
@@ -152,8 +152,8 @@ export function MyProperties() {
                   </div>
                 </CardHeader>
 
-                <CardContent className="space-y-4 pt-0">
-                  <div className="space-y-2 text-xs text-[#64748B]">
+                <CardContent className="space-y-5 px-6 pb-6 pt-0">
+                  <div className="grid gap-3 text-sm text-[#64748B] sm:grid-cols-2">
                     <div className="flex items-center gap-1.5">
                       <MapPin className="h-3.5 w-3.5 text-[#94A3B8]" />
                       <span>{[prop.village, prop.taluk, prop.district].filter(Boolean).join(', ') || 'Location not provided'}</span>

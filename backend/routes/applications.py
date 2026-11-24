@@ -90,6 +90,18 @@ def list_applications():
         applicant_wallet=wallet_filter,
         status=request.args.get("status"),
     )
+    # Admin lookup is intentionally performed server-side so identifiers and
+    # location fields are not limited to the currently rendered table page.
+    query = (request.args.get("q") or "").strip().casefold()
+    if query:
+        if user["role"] != "admin":
+            raise APIError("Only administrators may search all applications", status_code=403)
+        searchable = ("id", "survey_number", "property_id", "applicant_email", "applicant_wallet")
+        applications = [
+            item for item in applications
+            if any(query in str(item.get(field, "")).casefold() for field in searchable)
+            or any(query in str((item.get("property_details") or {}).get(field, "")).casefold() for field in ("village", "taluk", "district"))
+        ]
     if user["role"] != "admin":
         applications = [
             item for item in applications

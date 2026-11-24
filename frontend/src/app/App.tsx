@@ -8,6 +8,7 @@ import {
 
 import { WalletProvider } from './context/WalletContext';
 import { AuthProvider } from './context/AuthContext';
+import { LanguageProvider } from './context/LanguageContext';
 import { RequireWallet } from './components/RequireWallet';
 import { ScrollToTop } from './components/ScrollToTop';
 import { Landing } from './components/screens/Landing';
@@ -29,6 +30,7 @@ import { Applications } from './components/screens/Applications';
 import { ApplicationDetails } from './components/screens/ApplicationDetails';
 import { MyProperties } from './components/screens/MyProperties';
 import { Transactions } from './components/screens/Transactions';
+import { Marketplace } from './components/screens/Marketplace';
 
 
 function Protected({
@@ -44,7 +46,7 @@ function Protected({
 
 export default function App() {
   return (
-    <AuthProvider>
+    <LanguageProvider><AuthProvider>
       <WalletProvider>
         <Router>
           <ScrollToTop />
@@ -69,6 +71,7 @@ export default function App() {
             <Route path="/transfer" element={<Protected><PropertyTransfer /></Protected>} />
             <Route path="/inheritance" element={<Protected><InheritanceTransfer /></Protected>} />
             <Route path="/valuation" element={<Protected><LandValuation /></Protected>} />
+            <Route path="/marketplace" element={<Marketplace />} />
             <Route path="/verify" element={<Protected><DocumentVerification /></Protected>} />
             <Route path="/map" element={<Protected><PropertySearch /></Protected>} />
             <Route path="/transactions" element={<Protected><Transactions /></Protected>} />
@@ -79,6 +82,6 @@ export default function App() {
           </Routes>
         </Router>
       </WalletProvider>
-    </AuthProvider>
+    </AuthProvider></LanguageProvider>
   );
 }

@@ -23,6 +23,7 @@ export function Landing() {
         <div className="mt-8 flex flex-wrap justify-center gap-3">
           <Link to={user ? home : '/login'}><Button size="lg" className="rounded-xl bg-[#0F766E] shadow-lg shadow-teal-900/15 hover:bg-[#115E59]">{user ? 'Go to dashboard' : 'Create a user account'}</Button></Link>
           <Link to="/admin/login"><Button size="lg" variant="outline" className="rounded-xl border-slate-300 bg-white/75">Admin sign in</Button></Link>
+          <Link to="/marketplace"><Button size="lg" variant="outline" className="rounded-xl border-slate-300 bg-white/75">Browse marketplace</Button></Link>
         </div>
       </section>
       <section className="mx-auto grid max-w-6xl gap-5 px-5 pb-20 md:grid-cols-3">

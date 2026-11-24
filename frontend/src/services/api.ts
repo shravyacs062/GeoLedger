@@ -23,7 +23,15 @@ export type GISLookup = {
   disclaimer?: string;
 };
 
-const DEFAULT_API_URL = `${window.location.protocol}//${window.location.hostname}:5000`;
+export type MarketplaceListing = {
+  id: string; listing_id: string; title: string; survey_number: string; district: string;
+  taluk?: string; village?: string; land_type: string; area: number; area_unit: string;
+  asking_price: number; description: string; seller_name: string; status: string; is_demo: boolean;
+};
+
+const DEFAULT_API_URL = import.meta.env.DEV
+  ? '/api'
+  : `${window.location.protocol}//${window.location.hostname}:5000`;
 const BASE_URL = import.meta.env.VITE_API_BASE_URL || DEFAULT_API_URL;
 
 const client = axios.create({
@@ -44,7 +52,7 @@ export const api = {
     },
     me: async () => {
       const response = await client.get('/auth/me');
-      return response.data?.data;
+      return response.data?.data ?? null;
     },
     logout: async () => {
       const response = await client.post('/auth/logout');
@@ -109,6 +117,19 @@ export const api = {
     },
   },
 
+  marketplace: {
+    list: async (params?: Record<string, string>): Promise<MarketplaceListing[]> => {
+      const response = await client.get('/marketplace/listings', { params });
+      return response.data?.data || [];
+    },
+    mine: async (): Promise<MarketplaceListing[]> => {
+      const response = await client.get('/marketplace/my-listings'); return response.data?.data || [];
+    },
+    create: async (data: Record<string, unknown>) => (await client.post('/marketplace/listings', data)).data?.data,
+    deactivate: async (id: string) => client.delete(`/marketplace/listings/${encodeURIComponent(id)}`),
+    interest: async (id: string, message: string) => (await client.post(`/marketplace/listings/${encodeURIComponent(id)}/interests`, { message })).data?.data,
+  },
+
   qr: {
     get: async (identifier: string) => {
       const response = await client.get(`/qr/property/${encodeURIComponent(identifier)}`);
@@ -136,11 +157,12 @@ export const api = {
   },
 
   applications: {
-    list: async (status?: string, applicantWallet?: string, applicationType?: string) => {
+    list: async (status?: string, applicantWallet?: string, applicationType?: string, query?: string) => {
       const params: Record<string, string> = {};
       if (status) params.status = status;
       if (applicantWallet) params.applicant_wallet = applicantWallet;
       if (applicationType) params.application_type = applicationType;
+      if (query) params.q = query;
       const response = await client.get('/applications', { params });
       return response.data?.data || [];
     },

@@ -6,6 +6,7 @@ import { api } from '../../../services/api';
 import { Layout } from '../Layout';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Input } from '../ui/input';
 
 type Application = {
   id: string;
@@ -31,11 +32,12 @@ export function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState('');
   const [error, setError] = useState('');
+  const [query, setQuery] = useState('');
 
   const loadData = useCallback(() => Promise.all([
-    api.applications.list(),
+    api.applications.list(undefined, undefined, undefined, query),
     api.documents.list(),
-  ]), []);
+  ]), [query]);
 
   const refresh = useCallback(async () => {
     try {
@@ -126,10 +128,10 @@ export function AdminDashboard() {
           ))}
         </div>
         <Card>
-          <CardHeader><CardTitle>Applications</CardTitle></CardHeader>
+          <CardHeader className="gap-3"><CardTitle>Applications</CardTitle><Input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search survey no., application ID, owner, village or district" aria-label="Search applications" /></CardHeader>
           <CardContent className="overflow-x-auto">
             {loading ? <p className="py-6 text-sm text-[#64748B]">Loading applications…</p>
-              : applications.length === 0 ? <p className="py-6 text-sm text-[#64748B]">No applications submitted.</p>
+              : applications.length === 0 ? <p className="py-6 text-sm text-[#64748B]">No applications match this search.</p>
                 : <table className="w-full min-w-[700px] text-left text-sm">
                   <thead><tr className="border-b text-[#64748B]"><th className="p-3">Survey</th><th className="p-3">Type</th><th className="p-3">Applicant</th><th className="p-3">Status</th><th className="p-3">Actions</th></tr></thead>
                   <tbody>{applications.map((app) => <tr key={app.id} className="border-b last:border-0">

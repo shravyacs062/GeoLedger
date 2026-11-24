@@ -1,19 +1,21 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   ArrowLeftRight, Bell, Building2, Calculator, ChevronDown, ClipboardList, FileText,
-  Home, LogOut, Map, Search, ShieldCheck, User, Users,
+  Home, LogOut, Map, Search, ShieldCheck, User, Users, Store,
 } from 'lucide-react';
 import { useState } from 'react';
 
 import { shortenAddress } from '../../services/wallet';
 import { useAuth } from '../context/useAuth';
 import { useWallet } from '../context/useWallet';
+import { useLanguage } from '../context/LanguageContext';
 
 const userItems = [
   { icon: Home, label: 'Dashboard', path: '/dashboard' },
   { icon: Building2, label: 'My Properties', path: '/properties' },
   { icon: ClipboardList, label: 'Applications', path: '/applications' },
   { icon: Search, label: 'Property Search', path: '/search' },
+  { icon: Store, label: 'Marketplace', path: '/marketplace' },
 ];
 
 const adminItems = [
@@ -44,6 +46,7 @@ export function Sidebar() {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
   const { address, chainName, disconnect } = useWallet();
+  const { language, setLanguage, t } = useLanguage();
   const admin = user?.role === 'admin';
   const items = admin ? adminItems : userItems;
   const moreItems = admin ? adminMoreItems : userMoreItems;
@@ -76,7 +79,7 @@ export function Sidebar() {
       <nav className="flex-1 space-y-1.5 overflow-y-auto p-4">
         {items.map(({ icon: Icon, label, path }) => (
           <Link key={path} to={path} onClick={() => setMoreOpenState({ pathname: location.pathname, open: false })} className={`group flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm transition-all duration-200 ${active(path) ? 'bg-teal-700/90 text-white shadow-md shadow-black/10 ring-1 ring-white/10' : 'text-[#CBD5E1] hover:bg-white/[0.07] hover:text-white'}`}>
-            <Icon className={`h-[18px] w-[18px] shrink-0 transition-colors ${active(path) ? 'text-teal-100' : 'text-slate-400 group-hover:text-teal-200'}`} />{label}
+            <Icon className={`h-[18px] w-[18px] shrink-0 transition-colors ${active(path) ? 'text-teal-100' : 'text-slate-400 group-hover:text-teal-200'}`} />{label === 'Dashboard' ? t('dashboard') : label === 'My Properties' ? t('properties') : label === 'Marketplace' ? t('marketplace') : label === 'Applications' ? t('applications') : label === 'Property Search' ? t('search') : label}
           </Link>
         ))}
         <details open={moreOpen} className="pt-2">
@@ -87,7 +90,7 @@ export function Sidebar() {
             }}
             className="flex cursor-pointer list-none items-center justify-between rounded-xl px-4 py-2.5 text-sm text-[#CBD5E1] hover:bg-white/[0.07] hover:text-white"
           >
-            More
+            {t('more')}
             <ChevronDown className={`h-4 w-4 transition-transform ${moreOpen ? 'rotate-180' : ''}`} />
           </summary>
           <div className="mt-1 space-y-1">
@@ -100,13 +103,14 @@ export function Sidebar() {
         </details>
       </nav>
       <div className="space-y-2 border-t border-white/10 p-4">
+        <button type="button" onClick={() => setLanguage(language === 'en' ? 'kn' : 'en')} className="w-full rounded-xl border border-white/10 px-3 py-2 text-left text-sm text-teal-100 hover:bg-white/[.07]">{t('kannada')}</button>
         <Link to="/profile" className="flex items-center gap-3 rounded-xl px-3 py-2.5 transition-colors hover:bg-white/[0.07]">
           <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 ring-1 ring-white/10"><User className="h-5 w-5" /></span>
           <span className="min-w-0"><span className="block truncate text-sm font-medium">{user?.name || user?.email || 'Account'}</span>
             <span className="block truncate text-xs text-[#94A3B8]">{address ? `${shortenAddress(address)} · ${chainName}` : user?.email}</span></span>
         </Link>
         <button type="button" onClick={() => void signOut()} className="flex w-full items-center gap-3 rounded-xl px-4 py-2.5 text-sm text-[#CBD5E1] transition-colors hover:bg-white/[0.07] hover:text-white">
-          <LogOut className="h-4 w-4" />Sign out
+          <LogOut className="h-4 w-4" />{t('signOut')}
         </button>
       </div>
     </aside>

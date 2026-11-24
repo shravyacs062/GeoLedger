@@ -136,6 +136,19 @@ def test_status_endpoint(client):
     assert response.get_json()["success"] is True
 
 
+def test_current_user_endpoint_returns_null_without_an_active_session(client):
+    client.post("/auth/logout")
+
+    response = client.get("/auth/me")
+
+    assert response.status_code == 200
+    assert response.get_json() == {
+        "success": True,
+        "message": "No active session",
+        "data": None,
+    }
+
+
 def test_user_cannot_register_privileged_roles(client):
     response = client.post("/auth/register", json={
         "name": "Attempted Admin",

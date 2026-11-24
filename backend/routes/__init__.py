@@ -13,6 +13,7 @@ from .notifications import notifications_bp
 from .dashboard import dashboard_bp
 from .valuation import valuation_bp
 from .qr import qr_bp
+from .marketplace import marketplace_bp
 
 def register_blueprints(app: Flask) -> None:
 
@@ -29,3 +30,4 @@ def register_blueprints(app: Flask) -> None:
     app.register_blueprint(dashboard_bp)
     app.register_blueprint(valuation_bp)
     app.register_blueprint(qr_bp)
+    app.register_blueprint(marketplace_bp)

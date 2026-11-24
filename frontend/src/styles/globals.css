@@ -9,6 +9,8 @@ body {
   text-rendering: optimizeLegibility;
 }
 
+[lang="kn"] body { font-family: "Noto Sans Kannada", "Segoe UI", sans-serif; }
+
 ::selection {
   color: #0f172a;
   background: #99f6e4;
@@ -28,8 +30,18 @@ body {
 input:not([type="checkbox"]):not([type="radio"]):not([type="file"]),
 select,
 textarea {
+  border: 1px solid #cbd5e1;
+  background: #fff;
+  color: #0f172a;
+  border-radius: 0.375rem;
+  min-height: 2.5rem;
+  padding: 0.5rem 0.75rem;
   transition: border-color 150ms ease, box-shadow 150ms ease;
 }
+
+input[data-slot="input"] { border-color: #cbd5e1; background-color: #fff; }
+input::placeholder, textarea::placeholder { color: #64748b; opacity: 1; }
+select:hover, input[data-slot="input"]:hover, textarea:hover { border-color: #94a3b8; }
 
 input:focus-visible,
 select:focus-visible,

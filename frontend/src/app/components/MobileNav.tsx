@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { Bell, ChevronUp, FileText, Home, LayoutDashboard, LogOut, MoreHorizontal, Search, User } from 'lucide-react';
+import { Bell, ChevronUp, FileText, Home, LayoutDashboard, LogOut, MoreHorizontal, Search, User, Store } from 'lucide-react';
 import { useState } from 'react';
 
 import { useAuth } from '../context/useAuth';
@@ -22,7 +22,7 @@ export function MobileNav() {
       { icon: Home, label: 'Home', path: '/dashboard' },
       { icon: FileText, label: 'Applications', path: '/applications' },
       { icon: Search, label: 'Search', path: '/search' },
-      { icon: Bell, label: 'Alerts', path: '/notifications' },
+      { icon: Store, label: 'Market', path: '/marketplace' },
     ];
   const moreItems = user?.role === 'admin'
     ? [

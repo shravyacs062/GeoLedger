@@ -1,6 +1,6 @@
 import secrets
 
-from flask import Blueprint, request, session
+from flask import Blueprint, jsonify, request, session
 
 from database.client import get_database
 from services.auth_service import AuthService
@@ -43,7 +43,11 @@ def login():
 def current_user():
     user = session.get("user")
     if not user:
-        raise APIError("Authentication required", status_code=401)
+        return jsonify({
+            "success": True,
+            "message": "No active session",
+            "data": None,
+        })
     return success_response("Current user retrieved successfully", data=user)
 
 

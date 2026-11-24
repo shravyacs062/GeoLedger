@@ -19,13 +19,27 @@ DEFAULT_PARAMS = {
         "rural": 0.85,
     },
     "district_multipliers": {
-        "Mysuru": 1.15,
+        # ₹4,577 / sqft is the supplied Mysuru average residential market reference.
+        # With the Residential base rate and urban multiplier below, this calibrates the
+        # default Mysuru residential-urban estimate to that reference—not to a government value.
+        "Mysuru": 1.3561481481,
         "Bengaluru": 1.6,
+        "Kodagu": 1.1,
+        "Hassan": 1.0,
+        "Shivamogga": 1.0,
+        "Dakshina Kannada": 1.2,
         "default": 1.0,
+    },
+    "market_reference_rates": {
+        "Mysuru": {
+            "starting_rate_per_sqft": 187,
+            "average_rate_per_sqft": 4577,
+            "scope": "Supplied general Mysuru property-market reference; not an official guideline value.",
+        },
     },
     "disclaimer": (
         "This is a system-generated estimate for informational purposes only. "
-        "It is NOT an official government valuation or guideline value."
+        "It is an experimental Karnataka-only rule-based estimate, not an official government valuation or guideline value."
     ),
 }
 
@@ -94,6 +108,10 @@ class ValuationService:
         if area <= 0:
             raise APIError("Land area must be positive", status_code=400)
 
+        supported_districts = set((params.get("district_multipliers") or {}).keys()) - {"default"}
+        if not district or district not in supported_districts:
+            raise APIError("Choose a supported Karnataka district for this experimental estimate", status_code=400)
+
         rates = params.get("base_rate_per_sqft") or {}
         base_rate = rates.get(land_type) or rates.get("Other") or 1500
 
@@ -106,6 +124,7 @@ class ValuationService:
             dist_mult = dist_mults.get("default") or 1.0
 
         estimated_value = round(area * base_rate * loc_mult * dist_mult, 2)
+        market_reference = (params.get("market_reference_rates") or {}).get(district)
 
         return {
             "estimated_value": estimated_value,
@@ -114,12 +133,15 @@ class ValuationService:
             "land_type": land_type,
             "location_category": location_category,
             "district": district,
+            "state": "Karnataka",
+            "methodology": "Experimental rule-based estimator; it is not trained on Karnataka transaction data.",
             "factors": {
                 "base_rate_per_sqft": base_rate,
                 "location_multiplier": loc_mult,
                 "district_multiplier": dist_mult,
                 "formula": "area × base_rate × location_multiplier × district_multiplier",
             },
+            "market_reference": market_reference,
             "disclaimer": params.get("disclaimer") or DEFAULT_PARAMS["disclaimer"],
             "is_official_valuation": False,
         }

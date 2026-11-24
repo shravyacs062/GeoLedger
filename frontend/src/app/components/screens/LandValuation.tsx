@@ -100,7 +100,7 @@ export function LandValuation() {
       <div className="p-4 lg:p-8 max-w-3xl space-y-6">
         <div>
           <h1 className="text-3xl font-semibold text-[#0F172A]">Land Valuation</h1>
-          <p className="text-[#64748B]">System-generated estimate — not an official government valuation</p>
+          <p className="text-[#64748B]">Experimental Karnataka-only estimate — not an official government valuation</p>
         </div>
 
         <Card className="border-[#E2E8F0]">
@@ -139,8 +139,10 @@ export function LandValuation() {
                 </select>
               </div>
               <div className="space-y-2">
-                <Label>District</Label>
-                <Input value={district} onChange={(e) => setDistrict(e.target.value)} />
+                <Label>District (Karnataka only)</Label>
+                <select value={district} onChange={(e) => setDistrict(e.target.value)}>
+                  {['Mysuru', 'Bengaluru', 'Kodagu', 'Hassan', 'Shivamogga', 'Dakshina Kannada'].map((d) => <option key={d}>{d}</option>)}
+                </select>
               </div>
               <div className="space-y-2 sm:col-span-2">
                 <Label>Survey Number (optional)</Label>
@@ -171,13 +173,22 @@ export function LandValuation() {
                 ₹{Number(result.estimated_value).toLocaleString('en-IN')}
               </p>
               <p className="text-sm text-[#64748B]">{result.disclaimer}</p>
+              <p className="text-sm text-amber-800">{result.methodology}</p>
               <div className="text-sm space-y-1 bg-[#F8FAFC] rounded-lg p-4 border border-[#E2E8F0]">
                 <p>Formula: {result.factors?.formula}</p>
                 <p>Base rate: ₹{result.factors?.base_rate_per_sqft}/sq ft</p>
+                <p>Estimated rate: ₹{Math.round(Number(result.estimated_value) / Number(result.area || 1)).toLocaleString('en-IN')}/sq ft</p>
                 <p>Location multiplier: {result.factors?.location_multiplier}</p>
                 <p>District multiplier: {result.factors?.district_multiplier}</p>
                 <p>Official valuation: {result.is_official_valuation ? 'Yes' : 'No'}</p>
               </div>
+              {result.market_reference && (
+                <div className="rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">
+                  <p className="font-medium">Mysuru market reference</p>
+                  <p>Starting price: ₹{Number(result.market_reference.starting_rate_per_sqft).toLocaleString('en-IN')}/sq ft · Average price: ₹{Number(result.market_reference.average_rate_per_sqft).toLocaleString('en-IN')}/sq ft</p>
+                  <p className="mt-1 text-xs text-amber-800">{result.market_reference.scope}</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
