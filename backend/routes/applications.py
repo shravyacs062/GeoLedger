@@ -45,12 +45,31 @@ def create_application():
         heirs = data.get("legal_heirs") or details.get("legal_heirs") or []
         if not isinstance(heirs, list) or not heirs:
             raise APIError("At least one legal heir must be specified", status_code=400)
+        if any(
+            not isinstance(heir, dict)
+            or not isinstance(heir.get("name"), str)
+            or not heir["name"].strip()
+            or not isinstance(heir.get("relationship"), str)
+            or not heir["relationship"].strip()
+            for heir in heirs
+        ):
+            raise APIError("Each legal heir must include a name and relationship", status_code=400)
+        normalized_names = [heir["name"].strip().casefold() for heir in heirs]
+        if len(set(normalized_names)) != len(normalized_names):
+            raise APIError("Duplicate legal heirs are not allowed", status_code=400)
+        deceased_name = data.get("deceased_owner_name") or details.get("deceased_owner_name")
+        if not isinstance(deceased_name, str) or not deceased_name.strip():
+            raise APIError("Deceased owner name is required", status_code=400)
+        relationship = data.get("relationship") or details.get("relationship")
+        if not isinstance(relationship, str) or not relationship.strip():
+            raise APIError("Applicant relationship to the deceased is required", status_code=400)
         data["legal_heirs"] = heirs
-        data["relationship"] = data.get("relationship") or details.get("relationship")
+        data["deceased_owner_name"] = deceased_name.strip()
+        data["relationship"] = relationship.strip()
         details.update({
             "legal_heirs": heirs,
             "relationship": data["relationship"],
-            "deceased_owner_name": data.get("deceased_owner_name") or details.get("deceased_owner_name"),
+            "deceased_owner_name": data["deceased_owner_name"],
             "deceased_owner_wallet": data.get("deceased_owner_wallet") or details.get("deceased_owner_wallet"),
         })
         data["party_details"] = details

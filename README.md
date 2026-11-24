@@ -135,11 +135,15 @@ venv\Scripts\activate
 source venv/bin/activate
 
 # Install requirements
-pip install flask flask-cors pymongo python-dotenv web3
+pip install -r requirements.txt
 
 # Run the backend (defaults to SQLite fallback if MongoDB is not running)
 python app.py
 ```
+Before starting the API, create `backend/.env` with a generated `SECRET_KEY`, an
+`ADMIN_EMAIL`, and an `ADMIN_PASSWORD` of at least 12 characters. Generate a
+secret with `python -c "import secrets; print(secrets.token_hex(32))"`. The
+development server will not start with the example/default secret.
 > *The backend server will run on `http://localhost:5000` (or configured port).*
 
 ---
@@ -159,26 +163,67 @@ npm run dev
 
 ---
 
+## 🧭 Land registration and ownership workflows
+
+Sign in or create a user account, then link and verify a wallet from **Profile**.
+The same wallet must be connected in MetaMask when submitting registration or
+transfer applications.
+
+- **New registration:** open **My Properties → Register New Land**, enter the
+  parcel details, click the map to mark at least three boundary points, and
+  upload the sale deed, ID proof, and mutation certificate. The drawn boundary
+  is stored with the application and shown on GIS lookups, but is user-submitted
+  and is not an authoritative cadastral survey.
+- **Ownership transfer:** select an existing property, enter the new owner's
+  name and wallet, then upload the sale deed, seller/buyer ID proofs, and
+  mutation certificate.
+- **Inheritance transfer:** identify the registered parcel and deceased owner,
+  list the heirs, and upload the required inheritance documents.
+
+An Admin reviews each application and its documents before approval. Approval
+records the property/ownership change on the configured blockchain (or in
+development simulation mode when no contract is configured).
+Confirmed block metadata is also appended to
+`backend/blockchain/blocks.jsonl` (one JSON record per transaction), including
+the transaction hash, block number/hash, timestamp, transaction index, gas
+used, chain ID, and whether the record came from simulation. The Transactions
+screen shows these details. Simulation records do not have a real block hash,
+gas receipt, or chain ID; they are clearly labeled as simulated.
+When the backend starts, confirmed transactions already stored in the database
+are backfilled into this log once. Older records are labeled as legacy when
+their simulation source or receipt metadata was not saved at the time.
+Application details include a status history with timestamps and the actor
+responsible for each recorded transition. Existing records without history
+continue to display their current status.
+
+On upload, the backend validates the file extension and signature, stores a
+server-computed SHA-256 hash, and performs best-effort text extraction and
+field checks. This prototype does not automatically establish legal
+authenticity: Admin review is required. Image OCR depends on optional
+Pillow/pytesseract support and an installed Tesseract executable.
+
+---
+
 ## 🔌 API Overview
 
 | Method | Endpoint | Description |
 |---|---|---|
-| `GET` | `/properties` | List registered land parcels with pagination and filters |
-| `GET` | `/properties/<id>` | Fetch detailed parcel metadata and ownership records |
-| `POST` | `/applications/create` | Submit new title registration application |
-| `GET` | `/applications/<id>` | Retrieve full status history of an application |
-| `POST` | `/documents/upload` | Upload supporting deed documents |
-| `POST` | `/ownership/transfer` | Execute or request an ownership transfer |
-| `GET` | `/verify/property/<identifier>`| Public zero-knowledge style verification check |
-| `GET` | `/blockchain/transactions` | Query confirmed ledger transaction log |
+| `GET` | `/properties` | List registered land parcels |
+| `GET` | `/properties/<survey_number>` | Fetch a property record by survey number |
+| `POST` | `/applications` | Submit a registration, transfer, or inheritance application |
+| `GET` | `/applications/<application_id>` | Retrieve an application, current status, and status history |
+| `POST` | `/documents/upload` | Upload supporting application documents |
+| `POST` | `/applications/<application_id>/approve` | Admin approval and blockchain execution |
+| `GET` | `/verify/property/<identifier>` | Public property and blockchain verification summary |
+| `GET` | `/blockchain/transactions` | Query recorded blockchain transactions |
 
 ---
 
 ## 🔒 Security & Privacy
 
-- **Local Hash Verification**: Files are never transmitted in raw form for verification checks. Cryptographic SHA-256 signatures are generated in the browser and checked against the distributed ledger.
+- **Document Integrity**: The backend computes SHA-256 hashes for uploaded files and checks them again when verifying or retrieving a document. Hashes detect later changes; they do not prove the original file is genuine.
 - **Environment Isolation**: Database credentials, private keys, and session keys are secured in `.env` and kept strictly out of version control.
-- **Tamper Evidence**: Any modification to a land deed or boundary polygon yields an irreconcilable hash mismatch.
+- **Cadastral Data**: GIS boundaries in this demo are synthetic or user-submitted and are not verified government records.
 
 ---
 

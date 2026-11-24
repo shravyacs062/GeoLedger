@@ -6,6 +6,7 @@ import os
 from config import Config
 from database.client import init_db, close_db
 from routes import register_blueprints
+from services.block_log_service import backfill_confirmed_blocks
 from utils.errors import APIError
 from utils.responses import error_response
 
@@ -52,6 +53,11 @@ def create_app(testing=False):
 
     # Initialize database
     init_db(app)
+    if not testing:
+        restored_blocks = backfill_confirmed_blocks(app.db.transactions.find())
+        if restored_blocks:
+            print(f"Restored {restored_blocks} confirmed transaction(s) to blockchain block log.")
+
     from services.auth_service import AuthService
     AuthService().bootstrap_admin(
         app.config["ADMIN_EMAIL"],

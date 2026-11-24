@@ -1,6 +1,8 @@
 import json
 import os
 
+from database.client import get_database
+
 
 class GISService:
     def __init__(self):
@@ -16,6 +18,33 @@ class GISService:
 
     def get_geojson_by_survey_number(self, survey_number: str) -> dict:
         survey_norm = survey_number.strip().upper()
+        property_record = get_database().properties.find_one({
+            "$or": [
+                {"survey_number": survey_number},
+                {"property_id": survey_number},
+            ]
+        })
+        boundary = property_record.get("boundary") if property_record else None
+        if isinstance(boundary, dict) and boundary.get("type") == "Polygon":
+            return {
+                "survey_number": property_record.get("survey_number", survey_number),
+                "geojson": {
+                    "type": "Feature",
+                    "properties": {
+                        "survey_number": property_record.get("survey_number"),
+                        "property_id": property_record.get("property_id"),
+                        "area_sqft": property_record.get("area"),
+                        "land_type": property_record.get("land_type"),
+                    },
+                    "geometry": boundary,
+                },
+                "status": "found",
+                "found": True,
+                "data_source": "user_submitted_boundary",
+                "is_verified_cadastral": False,
+                "disclaimer": "Applicant-submitted boundary — not independently verified cadastral data.",
+            }
+
         for feature in self.parcels.get("features", []):
             props = feature.get("properties", {})
             f_survey = props.get("survey_number", "").strip().upper()

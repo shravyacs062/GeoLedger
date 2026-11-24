@@ -39,6 +39,18 @@ export function InheritanceTransfer() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const legalHeirs = heirsText
+    .split('\n')
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .map((line) => {
+      const [name, heirRelationship] = line.split(',').map((part) => part.trim());
+      return { name, relationship: heirRelationship || '' };
+    });
+  const requiredDocs = legalHeirs.length > 1
+    ? REQUIRED_DOCS
+    : REQUIRED_DOCS.filter((documentType) => documentType !== 'NOC_FROM_LEGAL_HEIRS');
+
   const setFile = (docType: string, file: File | null) => {
     setFiles((prev) => ({ ...prev, [docType]: file }));
   };
@@ -52,19 +64,16 @@ export function InheritanceTransfer() {
       if (!surveyNumber || !linkedHeirWallet) {
         throw new Error('Survey number and heir wallet are required');
       }
-      const missing = REQUIRED_DOCS.filter((d) => !files[d]);
+      if (!deceasedName.trim() || !relationship.trim()) {
+        throw new Error('Enter the deceased owner and your relationship to them.');
+      }
+      if (!legalHeirs.length || legalHeirs.some((heir) => !heir.name || !heir.relationship)) {
+        throw new Error('List every legal heir with their relationship, one per line.');
+      }
+      const missing = requiredDocs.filter((documentType) => !files[documentType]);
       if (missing.length) {
         throw new Error(`Upload all required documents. Missing: ${missing.join(', ')}`);
       }
-
-      const legal_heirs = heirsText
-        .split('\n')
-        .map((l) => l.trim())
-        .filter(Boolean)
-        .map((line) => {
-          const [name, rel] = line.split(',').map((s) => s.trim());
-          return { name, relationship: rel || '' };
-        });
 
       const app = await api.applications.create({
         application_type: 'INHERITANCE_TRANSFER',
@@ -75,7 +84,7 @@ export function InheritanceTransfer() {
         deceased_owner_name: deceasedName,
         deceased_owner_wallet: deceasedWallet || undefined,
         relationship,
-        legal_heirs,
+        legal_heirs: legalHeirs,
         heir_wallet: linkedHeirWallet,
         party_details: {
           applicant_name: heirName,
@@ -83,7 +92,7 @@ export function InheritanceTransfer() {
           relationship,
           deceased_owner_name: deceasedName,
           deceased_owner_wallet: deceasedWallet,
-          legal_heirs,
+          legal_heirs: legalHeirs,
           buyer: { wallet_address: linkedHeirWallet, name: heirName },
         },
       });
@@ -170,10 +179,10 @@ export function InheritanceTransfer() {
           <Card className="border-[#E2E8F0]">
             <CardHeader>
               <CardTitle>Required Legal Documents</CardTitle>
-              <CardDescription>PDF or image. Automated verification runs after upload.</CardDescription>
+              <CardDescription>Upload the required legal documents. A NOC is required when there is more than one legal heir.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {REQUIRED_DOCS.map((docType) => (
+              {requiredDocs.map((docType) => (
                 <div key={docType} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border border-[#E2E8F0] rounded-lg p-3">
                   <div>
                     <p className="text-sm font-medium text-[#0F172A]">{docType.replaceAll('_', ' ')}</p>
@@ -185,7 +194,7 @@ export function InheritanceTransfer() {
                     <input
                       type="file"
                       className="hidden"
-                      accept=".pdf,.png,.jpg,.jpeg,.txt"
+                      accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.txt"
                       onChange={(e) => setFile(docType, e.target.files?.[0] || null)}
                     />
                   </label>

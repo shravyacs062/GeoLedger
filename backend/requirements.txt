@@ -7,3 +7,5 @@ pytest
 PyJWT
 qrcode[pil]
 Pillow
+pypdf
+pytesseract

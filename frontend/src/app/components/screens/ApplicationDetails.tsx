@@ -141,10 +141,14 @@ export function ApplicationDetails() {
   };
 
   const handleReviewDoc = async (docId: string, status: string) => {
+    const remarks = status === 'REJECTED'
+      ? prompt('Why is this document being rejected?')
+      : `Marked ${status} by Admin`;
+    if (status === 'REJECTED' && !remarks?.trim()) return;
     setActionLoading(true);
     setErrorMsg(null);
     try {
-      await api.verification.review(docId, status, `Marked ${status} by Admin`);
+      await api.verification.review(docId, status, remarks?.trim());
       setSuccessMsg(`Document ${status}`);
       await loadData();
     } catch (err: any) {
@@ -326,6 +330,29 @@ export function ApplicationDetails() {
               </CardContent>
             </Card>
 
+            <Card className="border-[#E2E8F0]">
+              <CardHeader>
+                <CardTitle className="text-base text-[#0F172A]">Status History</CardTitle>
+                <CardDescription>Application status changes and their recorded times.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ol className="space-y-4">
+                  {(app.status_history?.length
+                    ? app.status_history
+                    : [{ status: app.status, at: app.updated_at || app.created_at, actor: 'legacy' }]
+                  ).map((entry: { status: string; at?: string; actor?: string }, index: number) => (
+                    <li key={`${entry.status}-${entry.at || index}`} className="border-l-2 border-[#99F6E4] pl-3">
+                      <p className="text-xs font-semibold text-[#0F172A]">{entry.status.replace(/_/g, ' ')}</p>
+                      <p className="mt-1 text-[11px] text-[#64748B]">
+                        {entry.at ? new Date(entry.at).toLocaleString() : 'Time unavailable'}
+                        {entry.actor ? ` · ${entry.actor.replace(/_/g, ' ')}` : ''}
+                      </p>
+                    </li>
+                  ))}
+                </ol>
+              </CardContent>
+            </Card>
+
             {/* Quick Action to view GIS */}
             <Card className="border-[#E2E8F0] p-4 text-center">
               <Link to={`/search?survey=${encodeURIComponent(app.survey_number)}`}>
@@ -373,7 +400,7 @@ export function ApplicationDetails() {
                               <input
                                 type="file"
                                 className="hidden"
-                                accept=".pdf,.png,.jpg,.jpeg,.txt"
+                                accept=".pdf,.png,.jpg,.jpeg,.doc,.docx,.txt"
                                 disabled={!!uploadingType}
                                 onChange={(e) => handleUploadDoc(docType, e.target.files?.[0] || null)}
                               />
@@ -463,6 +490,26 @@ export function ApplicationDetails() {
                                 <p key={k}><span className="text-[#64748B]">{k}:</span> {String(v)}</p>
                               ))}
                             </div>
+                          )}
+                          {doc.verification_checks?.length > 0 && (
+                            <div className="space-y-1 rounded bg-[#F8FAFC] p-2">
+                              <p className="text-xs font-medium text-[#334155]">Automated checks</p>
+                              {doc.verification_checks.map((check: {
+                                name: string;
+                                passed: boolean;
+                                severity: string;
+                                message: string;
+                              }) => (
+                                <p key={`${check.name}-${check.message}`} className={`text-[11px] ${check.passed ? 'text-emerald-800' : 'text-amber-900'}`}>
+                                  {check.passed ? 'Pass' : 'Review'} · {check.name.replaceAll('_', ' ')} ({check.severity}): {check.message}
+                                </p>
+                              ))}
+                            </div>
+                          )}
+                          {doc.verification_notes && (
+                            <p className="rounded bg-amber-50 p-2 text-xs text-amber-900">
+                              Reviewer note: {doc.verification_notes}
+                            </p>
                           )}
                         </div>
                       );
